@@ -35,7 +35,7 @@ srun -p ${PARTITION} \
   --model_name_or_path "" \
   --conv_style "internvl2_5" \
   --output_dir ${OUTPUT_DIR} \
-  --meta_path "MMPR-v1.2/meta.json" \
+  --meta_path "shell/data/mimic2_0327_balanced_nolabels.json" \
   --overwrite_output_dir False \
   --force_image_size 448 \
   --down_sample_ratio 0.5 \
@@ -52,9 +52,9 @@ srun -p ${PARTITION} \
   --per_device_train_batch_size ${PER_DEVICE_BATCH_SIZE} \
   --gradient_accumulation_steps ${GRADIENT_ACC} \
   --evaluation_strategy "no" \
-  --save_strategy "no" \
+  --save_strategy "steps" \
   --save_steps 200 \
-  --save_total_limit 100 \
+  --save_total_limit 10 \
   --learning_rate 2e-7 \
   --weight_decay 0.05 \
   --warmup_ratio 0.03 \

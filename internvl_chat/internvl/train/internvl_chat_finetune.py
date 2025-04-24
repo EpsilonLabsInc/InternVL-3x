@@ -83,6 +83,16 @@ logger = logging.getLogger(__name__)
 
 os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 
+@dataclass
+class WandbArguments:
+    wandb_project: str = field(
+        default="mvm-dev",
+        metadata={"help": "WandB project name."}
+    )
+    wandb_run_name: str = field(
+        default="",
+        metadata={"help": "WandB run name. If empty, a default name will be generated."}
+    )
 
 @dataclass
 class ModelArguments:
@@ -806,13 +816,13 @@ def main():
     # If use DeepSpeed zero3, init_dist must before HfArgumentParser
     launcher = os.environ.get('LAUNCHER', 'slurm')
     init_dist(launcher=launcher, backend='nccl')
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments, WandbArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith('.json'):
         # If we pass only one argument to the script, and it's the path to a json file,
         # let's parse it to get our arguments.
-        model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        model_args, data_args, training_args, wandb_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+        model_args, data_args, training_args, wandb_args = parser.parse_args_into_dataclasses()
 
     training_args.use_packed_ds = data_args.use_packed_ds
 
@@ -826,6 +836,31 @@ def main():
         datefmt='%m/%d/%Y %H:%M:%S',
         handlers=[logging.StreamHandler(sys.stdout)],
     )
+    
+    import pytz
+    import socket
+    import wandb
+    from datetime import datetime
+
+    pst_timezone = pytz.timezone("America/Los_Angeles")
+    now_pst = datetime.now(pst_timezone)
+
+    # Format it as "Month-Day-Hour-Min-Year"
+    formatted_time_pst = now_pst.strftime("%m-%d-%H-%M-%Y")
+
+    # Get the server/hostname
+    hostname = socket.gethostname()
+
+    # Combine hostname and date-time into a single string
+    _name = f"{hostname}-{formatted_time_pst}"
+    
+    if training_args.local_rank == 0:
+        # Use the provided wandb_run_name if given, otherwise fallback to _name
+        run_name = wandb_args.wandb_run_name if wandb_args.wandb_run_name else _name
+        wandb.init(
+            project=wandb_args.wandb_project,
+            name=run_name,
+        )
 
     if training_args.should_log:
         # The default of training_args.log_level is passive, so we set log level at info here to have that default.
