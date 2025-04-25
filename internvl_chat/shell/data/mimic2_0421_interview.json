@@ -1,0 +1,11 @@
+{
+    "mimic2_gpt": {
+      "root": "",
+      "annotation": "/home/eric/projects/InternVL-3x/output/jsonl/mimic2/042102025_atmost4images_no_label_train_interview.jsonl",
+      "data_augment": false,
+      "repeat_time": 1,
+      "length": 202234
+    }
+  }
+
+
