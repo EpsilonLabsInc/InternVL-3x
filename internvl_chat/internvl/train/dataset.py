@@ -32,6 +32,10 @@ from .constants import (CLIP_MEAN, CLIP_STD, IMAGENET_MEAN, IMAGENET_STD,
                         IMG_CONTEXT_TOKEN, IMG_END_TOKEN, IMG_START_TOKEN,
                         SIGLIP_MEAN, SIGLIP_STD)
 
+import pydicom
+from io import BytesIO
+import math
+
 try:
     from petrel_client.client import Client
     from petrel_client.common.config import Config
@@ -864,3 +868,71 @@ def dynamic_preprocess(image, min_num=1, max_num=6, image_size=448, use_thumbnai
         thumbnail_img = image.resize((image_size, image_size))
         processed_images.append(thumbnail_img)
     return processed_images
+
+
+def dcm_2_rgb(dcm_data, image_path):
+    if hasattr(dcm_data, 'pixel_array'):
+        pixel_array = dcm_data.pixel_array
+    else:
+        print("111", image_path)
+    # pixel_array = dcm_data.pixel_array
+
+    # Normalize the pixel values to the range 0-255
+    # The pixel values in a DICOM file may not be in the 0-255 range, so normalization is needed
+    pixel_array_normalized = (pixel_array - np.min(pixel_array)) / (np.max(pixel_array) - np.min(pixel_array)) * 255
+    pixel_array_normalized = pixel_array_normalized.astype(np.uint8)
+
+    # Convert grayscale DICOM data to an RGB image by stacking the array 3 times (R, G, B channels)
+    rgb_array = np.stack([pixel_array_normalized]*3, axis=-1)
+
+    # Convert the NumPy array to a PIL Image
+    try:
+        rgb_image = Image.fromarray(rgb_array)
+    except:
+        print("333", image_path)
+
+    rows = dcm_data.Rows
+    cols = dcm_data.Columns
+    # 1.6M pixels seems to cause issue of OOM during training
+    while rows * cols > 14000000:
+        # Compress the image by resizing by a factor of 2
+        # rows = rows // 2
+        # cols = cols // 2
+
+        factor = math.sqrt(2)
+        rows = int(rows / factor)
+        cols = int(cols / factor)
+
+        new_size = (cols, rows)
+        rgb_image = rgb_image.resize(new_size, Image.Resampling.LANCZOS)
+
+    return rgb_image
+
+def get_dcm_from_bucket(gcp_bucket_path, date="22JUL2024"):
+    base = f"gs://epsilon-data-us-central1/GRADIENT-DATABASE/CR/{date}/"
+    gcp_bucket_path = base + gcp_bucket_path
+
+    path_parts = gcp_bucket_path.split("/")
+    bucket_name = path_parts[2]
+    blob_path = "/".join(path_parts[3:])
+
+    storage_client = storage.Client()
+
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(blob_path)
+
+    dicom_data = blob.download_as_bytes()
+
+    dicom_file = pydicom.dcmread(BytesIO(dicom_data))
+
+    return dicom_file
+
+
+def get_dcm_from_local(local_path):
+
+    # prefix = "/root/projects/data/gradient/gradient-cxr/22JUL2024/"
+
+    # dicom_file = pydicom.dcmread(prefix + local_path)
+    dicom_file = pydicom.dcmread(local_path)
+
+    return dicom_file

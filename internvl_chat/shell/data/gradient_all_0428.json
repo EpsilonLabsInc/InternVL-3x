@@ -1,0 +1,11 @@
+{
+    "gradient_all": {
+      "root": "",
+      "annotation": "/home/eric/projects/InternVL-3x/output/jsonl/gradient/all_train_0428_updated.jsonl",
+      "data_augment": false,
+      "repeat_time": 1,
+      "length": 2149541
+    }
+  }
+
+

@@ -50,7 +50,8 @@ from internvl.train.dataset import (ConcatDataset, TCSLoader,
                                     dynamic_preprocess, preprocess,
                                     preprocess_internlm,
                                     preprocess_internvl2_5, preprocess_mpt,
-                                    preprocess_phi3)
+                                    preprocess_phi3,
+                                    dcm_2_rgb, get_dcm_from_bucket, get_dcm_from_local)
 from internvl.train.dataset_packed import PackedDataset, packed_collate_fn
 from PIL import Image, ImageFile, PngImagePlugin, UnidentifiedImageError
 from torch.utils.data import Dataset
@@ -412,6 +413,11 @@ class LazySupervisedDataset(Dataset):
         # Load the image using tcs_loader if available, otherwise use PIL
         if self.tcs_loader is not None and 's3://' in image_path:
             return self.tcs_loader(image_path)
+        elif 'dcm' in image_path:
+            # dcm_data = get_dcm_from_bucket(image_path)
+            dcm_data = get_dcm_from_local(image_path)
+
+            return dcm_2_rgb(dcm_data, image_path)
         return Image.open(image_path).convert('RGB')
 
     def get_image_path(self, image_path):
@@ -943,6 +949,13 @@ def main():
         config.max_dynamic_patch = data_args.max_dynamic_patch
         model = InternVLChatModel.from_pretrained(
             model_args.model_name_or_path, torch_dtype=torch.bfloat16, config=config)
+        if hasattr(model.language_model, "merge_and_unload"):
+            print("found lora in checkpoint, merging and unloading")
+            model.language_model = model.language_model.merge_and_unload()
+        else:
+            print("merge_and_unload method not found in language_model. Skipping...")
+
+        print(model)
     else:
         logger.info('Loading ViT-6B...')
         vision_config = InternVisionConfig.from_pretrained(model_args.vision_path)
