@@ -19,16 +19,12 @@ prefix="/home/eric/projects/InternVL-3x/internvl_chat/training/"
 
 this_run="internvl3_chimera_${TIMESTAMP}_${LR}_mimic2_interview"
 
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_gradient_all_0501"
+this_run="internvl3_chimera_${TIMESTAMP}_${LR}_gradient_all_0513_continue"
 
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_gradient_all_chest_0507"
+# this_run="internvl3_chimera_${TIMESTAMP}_${LR}_gradient_all_chest_0507"
 
 OUTPUT_DIR="${prefix}${this_run}"
 
-
-if [ ! -d "$OUTPUT_DIR" ]; then
-  mkdir -p "$OUTPUT_DIR"
-fi
 
 if [ ! -d "$OUTPUT_DIR" ]; then
   mkdir -p "$OUTPUT_DIR"
@@ -46,11 +42,11 @@ torchrun \
   --nproc_per_node=${GPUS} \
   --master_port=${MASTER_PORT} \
   internvl/train/internvl_chat_finetune.py \
-  --model_name_or_path "pretrained/InternVL3-chimera-38B-8B/" \
+  --model_name_or_path "/home/eric/projects/InternVL-3x/internvl_chat/training/internvl3_chimera_20250501_162810_1e-5_gradient_all_0501/checkpoint-67174" \
   --conv_style "internvl2_5" \
   --use_fast_tokenizer False \
   --output_dir ${OUTPUT_DIR} \
-  --meta_path "./shell/data/gradient_all_chest_0507.json" \
+  --meta_path "./shell/data/gradient_all_0428.json" \
   --overwrite_output_dir True \
   --force_image_size 448 \
   --max_dynamic_patch 6 \
@@ -83,6 +79,6 @@ torchrun \
   --ps_version 'v2' \
   --deepspeed "zero_stage1_config.json" \
   --report_to "wandb" \
-  --wandb_project "internvl3_chimera_gradient_all_chest" \
+  --wandb_project "internvl3_chimera_gradient_all_continue" \
   --wandb_run_name "${this_run}" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"
