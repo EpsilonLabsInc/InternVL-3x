@@ -15,13 +15,11 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LR=1e-5
 MAX_DYNAMIC_PATCH=6
 
-prefix="/home/eric/projects/InternVL-3x/internvl_chat/training/"
+prefix="/mnt/training/internvl_weights/simonmed/"
 
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_mimic2_interview"
+this_run="internvl3_chimera_${TIMESTAMP}_${LR}_epsilon_all_0608"
+this_run="internvl3_chimera_${TIMESTAMP}_${LR}_simonmed_0608"
 
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_gradient_all_0501"
-
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_gradient_all_chest_0507"
 
 OUTPUT_DIR="${prefix}${this_run}"
 
@@ -50,7 +48,7 @@ torchrun \
   --conv_style "internvl2_5" \
   --use_fast_tokenizer False \
   --output_dir ${OUTPUT_DIR} \
-  --meta_path "./shell/data/gradient_all_chest_0507.json" \
+  --meta_path "./shell/data/all_0608.json" \
   --overwrite_output_dir True \
   --force_image_size 448 \
   --max_dynamic_patch 6 \
@@ -61,13 +59,14 @@ torchrun \
   --freeze_backbone False \
   --use_llm_lora 16 \
   --vision_select_layer -1 \
-  --dataloader_num_workers 36 \
+  --dataloader_num_workers 8 \
   --bf16 True \
   --num_train_epochs 3 \
   --per_device_train_batch_size ${PER_DEVICE_BATCH_SIZE} \
   --gradient_accumulation_steps ${GRADIENT_ACC} \
   --evaluation_strategy "no" \
-  --save_strategy "epoch" \
+  --save_strategy "steps" \
+  --save_steps 10 \
   --save_total_limit 3 \
   --learning_rate ${LR} \
   --weight_decay 0.001 \
@@ -81,8 +80,8 @@ torchrun \
   --dynamic_image_size True \
   --use_thumbnail True \
   --ps_version 'v2' \
-  --deepspeed "zero_stage1_config.json" \
+  --deepspeed "zero_stage3_config.json" \
   --report_to "wandb" \
-  --wandb_project "internvl3_chimera_gradient_all_chest" \
+  --wandb_project "epsilon-allcxr-test" \
   --wandb_run_name "${this_run}" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"

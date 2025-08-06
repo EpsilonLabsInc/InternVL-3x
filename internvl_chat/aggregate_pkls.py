@@ -103,6 +103,7 @@ if __name__ == "__main__":
     base_dir = "/home/eric/projects/InternVL-3x/internvl_chat/test_data/pkls/3_chimera_chest"
     base_dir = "/home/eric/projects/InternVL-3x/internvl_chat/test_data/pkls/3_chimera_both_continue"
     base_dir = "/home/eric/projects/InternVL-3x/internvl_chat/test_data/pkls/3_chimera_both_continue_all"
+    base_dir = "/home/eric/projects/InternVL-3x/internvl_chat/test_data/pkls/3_chimera_both_continue_all_chest"
 
     for subdir in os.listdir(base_dir):
         full_path = os.path.join(base_dir, subdir)

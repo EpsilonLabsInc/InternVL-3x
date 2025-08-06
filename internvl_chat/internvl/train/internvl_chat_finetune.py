@@ -409,15 +409,18 @@ class LazySupervisedDataset(Dataset):
             preprocess_function = preprocess
         return preprocess_function
 
-    def load_image(self, image_path):
+    def load_image(self, image_path, augmentation_parameters=None):
         # Load the image using tcs_loader if available, otherwise use PIL
         if self.tcs_loader is not None and 's3://' in image_path:
             return self.tcs_loader(image_path)
         elif 'dcm' in image_path:
             # dcm_data = get_dcm_from_bucket(image_path)
-            dcm_data = get_dcm_from_local(image_path)
+            try:
+                dcm_data = get_dcm_from_local(image_path)
+            except:
+                print(image_path)
 
-            return dcm_2_rgb(dcm_data, image_path)
+            return dcm_2_rgb(dcm_data, image_path, augmentation_parameters=augmentation_parameters)
         return Image.open(image_path).convert('RGB')
 
     def get_image_path(self, image_path):
@@ -443,9 +446,10 @@ class LazySupervisedDataset(Dataset):
 
         # Merge the image path
         image_path = self.get_image_path(data_item['image'])
+        augmentation_parameters = data_item.get('augmentation_parameters', None)
 
         # Load the image using tcs_loader if available, otherwise use PIL
-        image = self.load_image(image_path)
+        image = self.load_image(image_path, augmentation_parameters=augmentation_parameters)
 
         if self.dynamic_image_size:  # If dynamic image size is enabled, preprocess the image dynamically
             images = dynamic_preprocess(image, min_num=self.min_dynamic_patch, max_num=self.max_dynamic_patch,
@@ -497,8 +501,9 @@ class LazySupervisedDataset(Dataset):
         for image_path in data_item['image']:
             # Merge the image path
             image_path = self.get_image_path(image_path)
+            augmentation_parameters = data_item.get('augmentation_parameters', None)
             # Load the image using tcs_loader if available, otherwise use PIL
-            image = self.load_image(image_path)
+            image = self.load_image(image_path, augmentation_parameters=augmentation_parameters)
             if self.dynamic_image_size:  # If dynamic image size is enabled, preprocess the image dynamically
                 image = dynamic_preprocess(image, min_num=self.min_dynamic_patch,
                                            max_num=max(1, self.max_dynamic_patch // num_image),

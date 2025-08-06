@@ -36,6 +36,9 @@ import pydicom
 from io import BytesIO
 import math
 
+from epsutils.dicom import dicom_utils, dicom_compression_utils
+from epsutils.image import image_utils
+
 try:
     from petrel_client.client import Client
     from petrel_client.common.config import Config
@@ -869,8 +872,28 @@ def dynamic_preprocess(image, min_num=1, max_num=6, image_size=448, use_thumbnai
         processed_images.append(thumbnail_img)
     return processed_images
 
+def dcm_2_rgb(dcm_data, image_path, augmentation_parameters=None):
+    image = dicom_utils.get_dicom_image_from_dataset(dcm_data, custom_windowing_parameters={"window_center": 0, "window_width": 0})
+    image = image_utils.numpy_array_to_pil_image(image, convert_to_rgb=True)
 
-def dcm_2_rgb(dcm_data, image_path):
+    rows = dcm_data.Rows
+    cols = dcm_data.Columns
+    # 1.6M pixels seems to cause issue of OOM during training
+    while rows * cols > 14000000:
+        # Compress the image by resizing by a factor of 2
+        # rows = rows // 2
+        # cols = cols // 2
+
+        factor = math.sqrt(2)
+        rows = int(rows / factor)
+        cols = int(cols / factor)
+
+        new_size = (cols, rows)
+        image = image.resize(new_size, Image.Resampling.LANCZOS)
+
+    return image
+
+def dcm_2_rgb_old(dcm_data, image_path, augmentation_parameters=None):
     if hasattr(dcm_data, 'pixel_array'):
         pixel_array = dcm_data.pixel_array
     else:
@@ -890,6 +913,16 @@ def dcm_2_rgb(dcm_data, image_path):
         rgb_image = Image.fromarray(rgb_array)
     except:
         print("333", image_path)
+
+    if augmentation_parameters is not None:
+        print(augmentation_parameters)
+        print('doing augmentation')
+        rgb_image = augment_image(
+            rgb_image,
+            augmentation_parameters["rotation_in_degrees"],
+            augmentation_parameters["scaling"],
+            augmentation_parameters["translation"],
+        )
 
     rows = dcm_data.Rows
     cols = dcm_data.Columns
@@ -933,6 +966,46 @@ def get_dcm_from_local(local_path):
     # prefix = "/root/projects/data/gradient/gradient-cxr/22JUL2024/"
 
     # dicom_file = pydicom.dcmread(prefix + local_path)
-    dicom_file = pydicom.dcmread(local_path)
+    # dicom_file = pydicom.dcmread(local_path, force=True)
+
+    try:
+        dicom_file = pydicom.dcmread(local_path)
+    except:
+        dicom_file = pydicom.dcmread(local_path, force=True)
+        dicom_file = dicom_compression_utils.handle_dicom_compression(dicom_file)
 
     return dicom_file
+
+
+def augment_image(image, rotation_in_degrees, scaling, translation):
+    """
+    Applies data augmentation to a given PIL image using rotation, scaling and translation.
+
+    Parameters:
+        image (PIL.Image.Image): The input image to be augmented.
+        rotation_in_degrees (float): The angle in degrees by which the image is rotated.
+        scaling (float): The scaling factor applied to the image. Values > 1.0 enlarge the image,
+                         while values < 1.0 shrink it.
+        translation (float): The fraction of the image's width and height by which it is translated.
+
+    Returns:
+        PIL.Image.Image: The augmented image after applying rotation, scaling and translation.
+    """
+
+    width, height = image.size
+
+    # Rotation.
+    image = image.rotate(rotation_in_degrees, resample=Image.BICUBIC, expand=True)
+
+    # Scaling.
+    scaled_width = int(width * scaling)
+    scaled_height = int(height * scaling)
+    image = image.resize((scaled_width, scaled_height), resample=Image.BICUBIC)
+
+    # Translation.
+    trans_x = int(width * translation)
+    trans_y = int(height * translation)
+    translation_matrix = (1, 0, trans_x, 0, 1, trans_y)
+    image = image.transform(image.size, Image.AFFINE, translation_matrix, resample=Image.BICUBIC)
+
+    return image
