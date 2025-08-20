@@ -15,6 +15,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Dict, Literal, Optional
+import random
 
 import numpy as np
 
@@ -498,6 +499,10 @@ class LazySupervisedDataset(Dataset):
 
         images, num_tiles = [], []
         num_image = len(data_item['image'])
+        # print(f"Number of images: {num_image}")
+
+        random.shuffle(data_item['image'])
+
         for image_path in data_item['image']:
             # Merge the image path
             image_path = self.get_image_path(image_path)
@@ -667,10 +672,15 @@ class LazySupervisedDataset(Dataset):
                 data_item = json.loads(self.raw_data[i])
                 # conversations = data_item['conversations']
                 # check_conversations_repetition(conversations, repeat_threshold=0.4, ngram=10)
+
+                # print(f"Data item: {data_item}")
+
                 if 'image' in data_item and len(data_item['image']) != 0:
                     if type(data_item['image']) == list:
+                        # print("here123")
                         ret = self.multi_modal_multi_image_get_item(data_item)
                     else:
+                        # print("here345")
                         ret = self.multi_modal_get_item(data_item)
                 elif 'video' in data_item and data_item['video'] is not None and data_item['video'] != '':
                     ret = self.video_get_item(data_item)
@@ -686,13 +696,13 @@ class LazySupervisedDataset(Dataset):
                 if 'image' in data_item:
                     if type(data_item['image']) == list:
                         images = [self.root + item for item in data_item['image']]
-                        print(f'Failed to load image: {images}, the dataset is: {self.ds_name}')
+                        print(f'Failed to load image1: {images}, the dataset is: {self.ds_name}')
                     else:
                         if data_item['image'].startswith('s3://'):
                             data_path = self.root + data_item['image']
                         else:
                             data_path = os.path.join(self.root, data_item['image'])
-                        print(f'Failed to load image: {data_path}, the dataset is: {self.ds_name}')
+                        print(f'Failed to load image2: {data_path}, the dataset is: {self.ds_name}')
                 elif 'video' in data_item:
                     data_path = os.path.join(self.root, data_item['video'])
                     print(f'Failed to load video: {data_path}, the dataset is: {self.ds_name}')

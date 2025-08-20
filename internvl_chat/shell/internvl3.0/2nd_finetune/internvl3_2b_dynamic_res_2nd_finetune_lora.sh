@@ -1,7 +1,7 @@
 set -x
 
 GPUS=${GPUS:-2}
-BATCH_SIZE=${BATCH_SIZE:-16}
+BATCH_SIZE=${BATCH_SIZE:-32}
 PER_DEVICE_BATCH_SIZE=${PER_DEVICE_BATCH_SIZE:-4}
 GRADIENT_ACC=$((BATCH_SIZE / PER_DEVICE_BATCH_SIZE / GPUS))
 
@@ -17,8 +17,7 @@ MAX_DYNAMIC_PATCH=6
 
 prefix="/home/eric/projects/InternVL-3x/internvl_chat/training/"
 
-this_run="chimera_26b-2b_${TIMESTAMP}_${LR}_2.5_mimic2_${MAX_DYNAMIC_PATCH}_no_labels"
-this_run="internvl3_2b_${TIMESTAMP}_${LR}_mimic2_interview"
+this_run="chimera_prod_${TIMESTAMP}_no_labels_image_list_12above"
 
 OUTPUT_DIR="${prefix}${this_run}"
 
@@ -43,11 +42,11 @@ torchrun \
   --nproc_per_node=${GPUS} \
   --master_port=${MASTER_PORT} \
   internvl/train/internvl_chat_finetune.py \
-  --model_name_or_path "pretrained/InternVL3-2B/" \
+  --model_name_or_path "pretrained/InternVL3-chimera-38B-8B/" \
   --conv_style "internvl2_5" \
   --use_fast_tokenizer False \
   --output_dir ${OUTPUT_DIR} \
-  --meta_path "./shell/data/mimic2_0421_interview.json" \
+  --meta_path "./shell/data/all_0810_nolabel_12above.json" \
   --overwrite_output_dir True \
   --force_image_size 448 \
   --max_dynamic_patch 6 \
@@ -58,17 +57,15 @@ torchrun \
   --freeze_backbone False \
   --use_llm_lora 16 \
   --vision_select_layer -1 \
-  --dataloader_num_workers 48 \
+  --dataloader_num_workers 8 \
   --bf16 True \
   --num_train_epochs 3 \
   --per_device_train_batch_size ${PER_DEVICE_BATCH_SIZE} \
   --gradient_accumulation_steps ${GRADIENT_ACC} \
   --evaluation_strategy "no" \
-  --save_strategy "steps" \
-  --save_steps 10 \
-  --save_total_limit 10 \
+  --save_strategy "epoch" \
   --learning_rate ${LR} \
-  --weight_decay 0.001 \
+  --weight_decay 0.05 \
   --warmup_ratio 0.03 \
   --lr_scheduler_type "cosine" \
   --logging_steps 1 \
@@ -81,6 +78,6 @@ torchrun \
   --ps_version 'v2' \
   --deepspeed "zero_stage1_config.json" \
   --report_to "wandb" \
-  --wandb_project "internvl3_2b_chimera_mimic2_interview" \
+  --wandb_project "internvl3_test_12above" \
   --wandb_run_name "${this_run}" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"
