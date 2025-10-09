@@ -23,7 +23,7 @@ export MASTER_PORT=${MASTER_PORT:-29500}
 # Other training parameters (same as your single-node script)
 ###############################################################################
 GPUS=${GPUS:-8}
-BATCH_SIZE=${BATCH_SIZE:-32}
+BATCH_SIZE=${BATCH_SIZE:-64}
 PER_DEVICE_BATCH_SIZE=${PER_DEVICE_BATCH_SIZE:-4}
 GRADIENT_ACC=$((BATCH_SIZE / PER_DEVICE_BATCH_SIZE / GPUS))  # or adjust as needed
 
@@ -31,11 +31,12 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 export TF_CPP_MIN_LOG_LEVEL=3
 export LAUNCHER=pytorch
 
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+# TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+TIMESTAMP=0212
 
 LR=1e-5
-prefix="/mnt/training/internvl_weights/"
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_consolidated_labels-0904-38B-2B"
+prefix="/mnt/gradient_batch123/training/"
+this_run="internvl2.5_26b_finetune_lora_${TIMESTAMP}_${LR}_sixlabels_continue"
 OUTPUT_DIR="${prefix}${this_run}"
 
 if [ ! -d "$OUTPUT_DIR" ]; then
@@ -54,10 +55,10 @@ torchrun \
   --master_addr=${MASTER_ADDR} \
   --master_port=${MASTER_PORT} \
   internvl/train/internvl_chat_finetune.py \
-  --model_name_or_path "pretrained/InternVL3-chimera-38B-2B/" \
-  --conv_style "internvl2_5" \
+  --model_name_or_path "/mnt/gradient_batch123/training/internvl2.5_26b_all_data_base/checkpoint-23637/" \
+  --conv_style "internlm2-chat" \
   --output_dir "${OUTPUT_DIR}" \
-  --meta_path "./shell/data/all_0904_label_gpt_bp.json" \
+  --meta_path "./shell/data/gradient_mimic_chexpert_sixlabels.json" \
   --overwrite_output_dir True \
   --force_image_size 448 \
   --max_dynamic_patch 6 \
@@ -68,14 +69,14 @@ torchrun \
   --freeze_backbone False \
   --use_llm_lora 16 \
   --vision_select_layer -1 \
-  --dataloader_num_workers 8 \
+  --dataloader_num_workers 48 \
   --bf16 True \
   --num_train_epochs 3 \
   --per_device_train_batch_size ${PER_DEVICE_BATCH_SIZE} \
   --gradient_accumulation_steps ${GRADIENT_ACC} \
   --evaluation_strategy "no" \
   --save_strategy "epoch" \
-  --save_total_limit 3 \
+  --save_total_limit 10 \
   --learning_rate ${LR} \
   --weight_decay 0.05 \
   --warmup_ratio 0.03 \
@@ -91,6 +92,4 @@ torchrun \
   --deepspeed "zero_stage3_config.json" \
   --max_grad_norm 1.0 \
   --report_to "wandb" \
-  --wandb_project "internvl3-consolidated_labels-0904-38B-2B" \
-  --wandb_run_name "${this_run}" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"

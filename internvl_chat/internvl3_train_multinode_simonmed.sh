@@ -35,7 +35,7 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 LR=1e-5
 prefix="/mnt/training/internvl_weights/"
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_consolidated_labels-0904-38B-2B"
+this_run="internvl3_chimera_${TIMESTAMP}_${LR}_0802_no_label"
 OUTPUT_DIR="${prefix}${this_run}"
 
 if [ ! -d "$OUTPUT_DIR" ]; then
@@ -54,10 +54,10 @@ torchrun \
   --master_addr=${MASTER_ADDR} \
   --master_port=${MASTER_PORT} \
   internvl/train/internvl_chat_finetune.py \
-  --model_name_or_path "pretrained/InternVL3-chimera-38B-2B/" \
+  --model_name_or_path "/mnt/training/internvl_weights/useful/internvl3_chimera_20250630_190606_1e-5_epsilon_all_0608/checkpoint-32058/" \
   --conv_style "internvl2_5" \
   --output_dir "${OUTPUT_DIR}" \
-  --meta_path "./shell/data/all_0904_label_gpt_bp.json" \
+  --meta_path "./shell/data/simondmed_0608.json" \
   --overwrite_output_dir True \
   --force_image_size 448 \
   --max_dynamic_patch 6 \
@@ -91,6 +91,6 @@ torchrun \
   --deepspeed "zero_stage3_config.json" \
   --max_grad_norm 1.0 \
   --report_to "wandb" \
-  --wandb_project "internvl3-consolidated_labels-0904-38B-2B" \
+  --wandb_project "internvl3_chimera_simonmed_continue" \
   --wandb_run_name "${this_run}" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"
