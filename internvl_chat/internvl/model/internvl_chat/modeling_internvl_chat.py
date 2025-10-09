@@ -106,7 +106,8 @@ class InternVLChatModel(PreTrainedModel):
 
         if config.use_llm_lora:
             self.wrap_llm_lora(r=config.use_llm_lora, lora_alpha=2 * config.use_llm_lora)
-
+        # Initialize weights and apply final processing. See: https://github.com/huggingface/transformers/pull/37708
+        self.post_init()
     def wrap_backbone_lora(self, r=128, lora_alpha=256, lora_dropout=0.05):
         lora_config = LoraConfig(
             r=r,
@@ -324,7 +325,7 @@ class InternVLChatModel(PreTrainedModel):
 
         tokenizer.padding_side = 'left'
         model_inputs = tokenizer(queries, return_tensors='pt', padding=True)
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = torch.device(self.language_model.device if torch.cuda.is_available() else 'cpu')
         input_ids = model_inputs['input_ids'].to(device)
         attention_mask = model_inputs['attention_mask'].to(device)
         eos_token_id = tokenizer.convert_tokens_to_ids(template.sep.strip())
@@ -374,7 +375,7 @@ class InternVLChatModel(PreTrainedModel):
             query = query.replace('<image>', image_tokens, 1)
 
         model_inputs = tokenizer(query, return_tensors='pt')
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = torch.device(self.language_model.device if torch.cuda.is_available() else 'cpu')
         input_ids = model_inputs['input_ids'].to(device)
         attention_mask = model_inputs['attention_mask'].to(device)
         generation_config['eos_token_id'] = eos_token_id
@@ -447,13 +448,4 @@ class InternVLChatModel(PreTrainedModel):
 
     def get_output_embeddings(self):
         return self.language_model.get_output_embeddings()
-
-    @property
-    def lm_head(self):
-        return self.language_model.get_output_embeddings()
-
-    def get_input_embeddings(self):
-        return self.language_model.get_input_embeddings()
-
-    def get_output_embeddings(self):
-        return self.language_model.get_output_embeddings()
+        
