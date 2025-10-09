@@ -24,8 +24,7 @@ torch==2.4.0
 torchaudio==2.4.0
 torchvision>=0.15
 tqdm
-#transformers==4.37.2
-transformers
+transformers==4.39.3
 yacs
 wandb
 pylibjpeg==2.0.1
