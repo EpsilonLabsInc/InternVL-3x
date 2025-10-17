@@ -1,0 +1,9 @@
+{
+    "epsilon_all": {
+      "root": "",
+      "annotation": "/home/eric/projects/InternVL-3x/output/jsonl/all/1007_train_99.jsonl",
+      "data_augment": false,
+      "repeat_time": 1,
+      "length": 7832101
+    }
+  }

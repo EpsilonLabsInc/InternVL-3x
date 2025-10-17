@@ -1,5 +1,5 @@
 accelerate<1
-bitsandbytes==0.42.0
+bitsandbytes==0.41.0
 decord
 deepspeed>=0.13.5
 einops==0.6.1
@@ -9,7 +9,7 @@ imageio
 numpy==1.26.4
 opencv-python
 orjson
-peft==0.10.0
+peft==0.12.0
 pycocoevalcap
 pyyaml
 scikit-learn>=1.2.2
@@ -21,7 +21,16 @@ termcolor
 timm==0.9.12
 tokenizers==0.15.1
 torch>=2
+torchaudio==2.4.0
 torchvision>=0.15
 tqdm
-transformers==4.37.2
+transformers==4.39.3
 yacs
+wandb
+pylibjpeg==2.0.1
+pylibjpeg-libjpeg==2.2.0
+tensorflow==2.17.0
+tf-keras==2.17.0
+pydicom==3.0.1
+# ml_dtypes==0.2.0
+datasets
