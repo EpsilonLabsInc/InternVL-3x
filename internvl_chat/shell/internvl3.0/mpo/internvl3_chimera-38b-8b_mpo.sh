@@ -7,7 +7,7 @@ QUOTA_TYPE=${QUOTA_TYPE:-"reserved"}
 NODES=$((GPUS / GPUS_PER_NODE))
 CPUS_PER_TASK=${CPUS_PER_TASK:-10}
 SRUN_ARGS=${SRUN_ARGS:-""}
-BATCH_SIZE=${BATCH_SIZE:-8}
+BATCH_SIZE=${BATCH_SIZE:-32}
 PER_DEVICE_BATCH_SIZE=${PER_DEVICE_BATCH_SIZE:-1}
 GRADIENT_ACC=$((BATCH_SIZE / PER_DEVICE_BATCH_SIZE / GPUS))
 
@@ -20,7 +20,7 @@ export LAUNCHER=pytorch
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-LR=1e-6
+LR=1e-10
 
 
 OUTPUT_DIR="training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_${TIMESTAMP}_${LR}"
@@ -54,12 +54,11 @@ torchrun \
   --use_data_resampling False \
   --dataloader_num_workers 8 \
   --bf16 True \
-  --num_train_epochs 3 \
+  --num_train_epochs 1 \
   --per_device_train_batch_size ${PER_DEVICE_BATCH_SIZE} \
   --gradient_accumulation_steps ${GRADIENT_ACC} \
   --evaluation_strategy "no" \
-  --save_strategy "no" \
-  --save_steps 200 \
+  --save_strategy "epoch" \
   --save_total_limit 100 \
   --learning_rate ${LR} \
   --weight_decay 0.05 \
@@ -80,6 +79,6 @@ torchrun \
   --rpo_alpha 1 \
   --use_liger True \
   --report_to "wandb" \
-  --wandb_project "internvl3_mpo_1021" \
+  --wandb_project "internvl3_mpo_1022" \
   --wandb_run_name "${this_run}" \
     2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"
