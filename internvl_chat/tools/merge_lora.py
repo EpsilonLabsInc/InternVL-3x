@@ -10,8 +10,11 @@ argparse.add_argument('output_path', type=str, help='Path to the output model')
 args = argparse.parse_args()
 
 print('Loading model...')
+
+low_cpu_bool = False if 'mpo' in args.input_path.lower() else True
+
 model = InternVLChatModel.from_pretrained(
-    args.input_path, low_cpu_mem_usage=True, torch_dtype=torch.bfloat16).eval()
+    args.input_path, low_cpu_mem_usage=low_cpu_bool, torch_dtype=torch.bfloat16).eval()
 print('Loading tokenizer...')
 tokenizer = AutoTokenizer.from_pretrained(args.input_path, trust_remote_code=True)
 
@@ -25,7 +28,7 @@ if model.config.use_llm_lora:
     model.config.use_llm_lora = 0
 
 print('Saving model...')
-model.save_pretrained(args.output_path)
+model.save_pretrained(args.output_path, safe_serialization=False)
 print('Saving tokenizer...')
 tokenizer.save_pretrained(args.output_path)
 print('Done!')

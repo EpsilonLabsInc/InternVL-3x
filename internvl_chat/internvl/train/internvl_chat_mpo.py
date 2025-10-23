@@ -50,7 +50,8 @@ from internvl.train.dataset import (ConcatDataset, TCSLoader,
                                     dynamic_preprocess, preprocess,
                                     preprocess_internlm,
                                     preprocess_internvl2_5, preprocess_mpt,
-                                    preprocess_phi3)
+                                    preprocess_phi3,
+                                    get_dcm_from_local, dcm_2_rgb)
 from internvl.train.trainer_dpo import MultimodalDPOTrainer
 from PIL import Image, ImageFile, PngImagePlugin, UnidentifiedImageError
 from torch.utils.data import Dataset
@@ -83,7 +84,16 @@ warnings.filterwarnings('ignore')
 logger = logging.getLogger(__name__)
 
 os.environ['TOKENIZERS_PARALLELISM'] = 'true'
-
+@dataclass
+class WandbArguments:
+    wandb_project: str = field(
+        default="mvm-dev",
+        metadata={"help": "WandB project name."}
+    )
+    wandb_run_name: str = field(
+        default="",
+        metadata={"help": "WandB run name. If empty, a default name will be generated."}
+    )
 
 @dataclass
 class ModelArguments:
@@ -352,10 +362,18 @@ class LazySupervisedDataset(Dataset):
             preprocess_function = preprocess
         return preprocess_function
 
-    def load_image(self, image_path):
+    def load_image(self, image_path, augmentation_parameters=None):
         # Load the image using tcs_loader if available, otherwise use PIL
         if self.tcs_loader is not None and 's3://' in image_path:
             return self.tcs_loader(image_path)
+        elif 'dcm' in image_path:
+            # dcm_data = get_dcm_from_bucket(image_path)
+            try:
+                dcm_data = get_dcm_from_local(image_path)
+            except:
+                print(image_path)
+
+            return dcm_2_rgb(dcm_data, image_path, augmentation_parameters=augmentation_parameters)
         return Image.open(image_path).convert('RGB')
 
     def get_image_path(self, image_path):
@@ -454,11 +472,16 @@ class LazySupervisedDataset(Dataset):
         return ret
 
     def multi_modal_multi_image_get_item(self, data_item):
+
+        print("1, in multi_modal_multi_image_get_item")
         # Build transformation function
         transform = self.get_transform()
 
         images, num_tiles = [], []
         num_image = len(data_item['image'])
+
+        print("images are", data_item['image'])
+        
         for image_path in data_item['image']:
             # Merge the image path
             image_path = self.get_image_path(image_path)
@@ -487,6 +510,10 @@ class LazySupervisedDataset(Dataset):
             {'from': 'human', 'value': data_item['question']},
             {'from': 'gpt', 'value': data_item['chosen']},
         ]
+
+        print("2, chosen conv")
+        print(chosen_conversations)
+        
         chosen_ret = preprocess_function(
             self.template_name,
             [deepcopy(chosen_conversations)],
@@ -501,6 +528,10 @@ class LazySupervisedDataset(Dataset):
             {'from': 'human', 'value': data_item['question']},
             {'from': 'gpt', 'value': data_item['rejected']},
         ]
+
+        print("3, chosen conv")
+        print(rejected_conversations)
+        
         rejected_ret = preprocess_function(
             self.template_name,
             [deepcopy(rejected_conversations)],
@@ -691,7 +722,10 @@ class LazySupervisedDataset(Dataset):
                 print(e, self.ds_name, flush=True)
                 if not isinstance(e, (UnidentifiedImageError, FileNotFoundError)):
                     traceback.print_exc()
+
                 data_item = json.loads(self.raw_data[i])
+
+                
                 if 'image' in data_item:
                     if type(data_item['image']) == list:
                         images = [self.root + item for item in data_item['image']]
@@ -725,6 +759,10 @@ def build_datasets(
 ):
     datasets = []
     lengths = []
+
+    print("123, data")
+    print(data_args.meta_path)
+    
     ds_collections = json.loads(open(data_args.meta_path).read())
     for ds_idx, ds_name in enumerate(ds_collections.keys()):
         repeat_time = ds_collections[ds_name]['repeat_time']
@@ -779,13 +817,13 @@ def main():
     # If use DeepSpeed zero3, init_dist must before HfArgumentParser
     launcher = os.environ.get('LAUNCHER', 'slurm')
     init_dist(launcher=launcher, backend='nccl')
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, DPOConfig))
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, DPOConfig, WandbArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith('.json'):
         # If we pass only one argument to the script, and it's the path to a json file,
         # let's parse it to get our arguments.
-        model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        model_args, data_args, training_args, wandb_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+        model_args, data_args, training_args, wandb_args = parser.parse_args_into_dataclasses()
 
     training_args.remove_unused_columns = False
     training_args.gradient_checkpointing = model_args.grad_checkpoint
@@ -802,6 +840,31 @@ def main():
         datefmt='%m/%d/%Y %H:%M:%S',
         handlers=[logging.StreamHandler(sys.stdout)],
     )
+
+    import pytz
+    import socket
+    import wandb
+    from datetime import datetime
+
+    pst_timezone = pytz.timezone("America/Los_Angeles")
+    now_pst = datetime.now(pst_timezone)
+
+    # Format it as "Month-Day-Hour-Min-Year"
+    formatted_time_pst = now_pst.strftime("%m-%d-%H-%M-%Y")
+
+    # Get the server/hostname
+    hostname = socket.gethostname()
+
+    # Combine hostname and date-time into a single string
+    _name = f"{hostname}-{formatted_time_pst}"
+
+    if training_args.local_rank == 0:
+        # Use the provided wandb_run_name if given, otherwise fallback to _name
+        run_name = wandb_args.wandb_run_name if wandb_args.wandb_run_name else _name
+        wandb.init(
+            project=wandb_args.wandb_project,
+            name=run_name,
+        )
 
     if training_args.should_log:
         # The default of training_args.log_level is passive, so we set log level at info here to have that default.
@@ -878,8 +941,21 @@ def main():
         config.max_dynamic_patch = data_args.max_dynamic_patch
         model = InternVLChatModel.from_pretrained(
             model_args.model_name_or_path, torch_dtype=torch.bfloat16, config=config)
+        if hasattr(model.language_model, "merge_and_unload"):
+            print(f"found lora in checkpoint, merging and unloading for {model_args.model_name_or_path}")
+            model.language_model = model.language_model.merge_and_unload()
+        else:
+            print("merge_and_unload method not found in language_model. Skipping...")
+
+
         ref_model = InternVLChatModel.from_pretrained(
             model_args.model_name_or_path, torch_dtype=torch.bfloat16, config=config)
+        if hasattr(ref_model.language_model, "merge_and_unload"):
+            print(f"found lora in checkpoint, merging and unloading for {model_args.model_name_or_path}")
+            ref_model.language_model = ref_model.language_model.merge_and_unload()
+        else:
+            print("merge_and_unload method not found in language_model. Skipping...")
+
     else:
         logger.info('Loading ViT-6B...')
         vision_config = InternVisionConfig.from_pretrained(model_args.vision_path)
