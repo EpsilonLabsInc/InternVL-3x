@@ -15,20 +15,11 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LR=1e-5
 MAX_DYNAMIC_PATCH=6
 
-prefix="/mnt/training/internvl_weights/projector/"
+prefix="training/internvl_weights/"
 
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_projector_1006"
+this_run="internvl3_chimera_${TIMESTAMP}_${LR}"
 
 OUTPUT_DIR="${prefix}${this_run}"
-
-
-if [ ! -d "$OUTPUT_DIR" ]; then
-  mkdir -p "$OUTPUT_DIR"
-fi
-
-if [ ! -d "$OUTPUT_DIR" ]; then
-  mkdir -p "$OUTPUT_DIR"
-fi
 
 # number of gpus: 2
 # batch size per gpu: 4
@@ -46,15 +37,15 @@ torchrun \
   --conv_style "internvl2_5" \
   --use_fast_tokenizer False \
   --output_dir ${OUTPUT_DIR} \
-  --meta_path "./shell/data/eval_1006_label_gpt.json" \
+  --meta_path "./shell/data/mpo_1021.json" \
   --overwrite_output_dir True \
   --force_image_size 448 \
   --max_dynamic_patch 6 \
   --down_sample_ratio 0.5 \
   --drop_path_rate 0.0 \
-  --freeze_llm True \
+  --freeze_llm False \
   --freeze_mlp False \
-  --freeze_backbone True \
+  --freeze_backbone False \
   --use_llm_lora 16 \
   --vision_select_layer -1 \
   --dataloader_num_workers 8 \
@@ -77,8 +68,8 @@ torchrun \
   --dynamic_image_size True \
   --use_thumbnail True \
   --ps_version 'v2' \
-  --deepspeed "zero_stage3_config.json" \
+  --deepspeed "zero_stage1_config.json" \
   --report_to "wandb" \
-  --wandb_project "epsilon-projector-test" \
+  --wandb_project "internvl3_mpo_1022" \
   --wandb_run_name "${this_run}" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"
