@@ -184,5 +184,5 @@ output/
 *log
 *out
 *~
-.viscode/
+.vscode/
 internvl_chat/pretrained/
