@@ -330,7 +330,7 @@ def report_formation(report):
     endpoint = "https://epsilonlabs.openai.azure.com/"
     deployment = "gpt-4.1"
 
-    subscription_key = "04ed6f2a799547d28031552e5bd2c08f"
+    subscription_key = ""
 
     api_version = "2024-12-01-preview"
 
