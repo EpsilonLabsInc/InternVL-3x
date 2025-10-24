@@ -69,7 +69,7 @@ try:
     from petrel_client.common.config import Config
     has_tcs_loader = True
 except ImportError as E:
-    #print('petrel_client is not installed. Using PIL to load images.')
+    print('petrel_client is not installed. Using PIL to load images.')
     has_tcs_loader = False
 
 # Set constants for image processing and logging
@@ -85,37 +85,23 @@ logger = logging.getLogger(__name__)
 
 os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 
-def check_first_weights(model, step_name=""):
-    print(f"\n✓ Checking model first weights @@@@@@@ {step_name}")
-    print(f"\nModel config:")
-    print(f"  use_llm_lora: {model.config.use_llm_lora}")
-    print(f"  use_backbone_lora: {model.config.use_backbone_lora}")
-    
-    # Check language model
-    print(f"\nLanguage model type: {type(model.language_model)}")
-    print(f"Language model has 'merge_and_unload': {hasattr(model.language_model, 'merge_and_unload')}")
-    
-    # Check vision model
-    print(f"\nVision model type: {type(model.vision_model)}")
-    print(f"Vision model has 'merge_and_unload': {hasattr(model.vision_model, 'merge_and_unload')}")
-    
-    # Sample a few weights
-    print(f"\nLanguage model first layer weight sample:")
-    first_param = next(model.language_model.parameters())
-    print(f"  Shape: {first_param.shape}")
-    print(f"  Mean: {first_param.mean().item():.6f}")
-    print(f"  Std: {first_param.std().item():.6f}")
-    print(f"  Min: {first_param.min().item():.6f}")
-    print(f"  Max: {first_param.max().item():.6f}")
-
-
 # ============================================================================
 # DIAGNOSTIC FUNCTION: Check for zero weights
 # ============================================================================
+def safe_tensor_stats(tensor):
+    """Safely compute statistics for a tensor, handling empty tensors"""
+    import torch
+    if tensor.numel() == 0:
+        return None
+    return {
+        'mean': tensor.mean().item(),
+        'std': tensor.std().item(),
+        'min': tensor.min().item(),
+        'max': tensor.max().item(),
+    }
+
 def check_model_weight_stats(model, step_name=""):
     """Check and log weight statistics to detect zero weights"""
-    import torch
-    stats = {}
     zero_params = 0
     total_params = 0
     
@@ -126,12 +112,18 @@ def check_model_weight_stats(model, step_name=""):
             
             # Skip empty tensors
             if param_data.numel() == 0:
+                logger.debug(f"[SKIPPED EMPTY {step_name}] {name}: shape={param.shape}")
                 continue
             
-            mean_val = param_data.mean().item()
-            std_val = param_data.std().item()
-            min_val = param_data.min().item()
-            max_val = param_data.max().item()
+            # Safely compute statistics
+            stats_dict = safe_tensor_stats(param_data)
+            if stats_dict is None:
+                continue
+            
+            mean_val = stats_dict['mean']
+            std_val = stats_dict['std']
+            min_val = stats_dict['min']
+            max_val = stats_dict['max']
             num_zeros = (param_data == 0).sum().item()
             
             # Check if ALL values are zero
@@ -541,14 +533,14 @@ class LazySupervisedDataset(Dataset):
 
     def multi_modal_multi_image_get_item(self, data_item):
 
-        #print("1, in multi_modal_multi_image_get_item")
+        print("1, in multi_modal_multi_image_get_item")
         # Build transformation function
         transform = self.get_transform()
 
         images, num_tiles = [], []
         num_image = len(data_item['image'])
 
-        #print("images are", data_item['image'])
+        print("images are", data_item['image'])
 
         for image_path in data_item['image']:
             # Merge the image path
@@ -1136,8 +1128,7 @@ def main():
             logger.info("=" * 80)
             logger.info("🔍 DIAGNOSTIC: Weights after LoRA initialization")
             logger.info("=" * 80)
-            check_first_weights(model, step_name="AFTER_LORA_INIT111")
-            check_model_weight_stats(model, step_name="AFTER_LORA_INIT222")
+            check_model_weight_stats(model, step_name="AFTER_LORA_INIT")
 
     if model_args.freeze_mlp:
         _freeze_params(model.mlp1)
@@ -1180,8 +1171,7 @@ def main():
             logger.info("=" * 80)
             logger.info("🔍 DIAGNOSTIC: Weights BEFORE training starts")
             logger.info("=" * 80)
-            check_first_weights(model, step_name="BEFORE_TRAINING111")
-            check_model_weight_stats(model, step_name="BEFORE_TRAINING222")
+            check_model_weight_stats(model, step_name="BEFORE_TRAINING")
 
         print(f'[Memory Usage before training] {torch.cuda.memory_allocated()/1024/1024/1024:.2f}GB')
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
@@ -1191,8 +1181,7 @@ def main():
             logger.info("=" * 80)
             logger.info("🔍 DIAGNOSTIC: Weights AFTER training completes")
             logger.info("=" * 80)
-            check_first_weights(model, step_name="AFTER_TRAINING111")
-            check_model_weight_stats(model, step_name="AFTER_TRAINING222")
+            check_model_weight_stats(model, step_name="AFTER_TRAINING")
 
         trainer.save_model()  # Saves the tokenizer too for easy upload
 
