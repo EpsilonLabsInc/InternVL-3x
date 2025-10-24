@@ -18,6 +18,53 @@ model_path = "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_
 
 print(model_path)
 
+def analyze_module_weights(module, module_name, max_params=20):
+    """Analyze weights in a module, showing multiple parameters"""
+    print(f"\n{'='*80}")
+    print(f"📊 {module_name} Weight Analysis")
+    print(f"{'='*80}")
+    
+    param_list = []
+    for name, param in module.named_parameters():
+        if param.numel() > 0:  # Skip empty tensors
+            param_list.append((name, param))
+    
+    print(f"Total parameters: {len(param_list)}")
+    print(f"Showing first {min(max_params, len(param_list))} parameters:\n")
+    
+    for idx, (name, param) in enumerate(param_list[:max_params]):
+        print(f"[{idx+1}] {name}")
+        print(f"    Shape: {param.shape}, Numel: {param.numel()}")
+        
+        # Safe statistics computation
+        if param.numel() > 0:
+            mean_val = param.mean().item()
+            std_val = param.std().item()
+            min_val = param.min().item()
+            max_val = param.max().item()
+            num_zeros = (param == 0).sum().item()
+            zero_pct = (num_zeros / param.numel()) * 100
+            
+            print(f"    Mean: {mean_val:>12.8f}  Std: {std_val:>12.8f}")
+            print(f"    Min:  {min_val:>12.8f}  Max: {max_val:>12.8f}")
+            print(f"    Zeros: {num_zeros}/{param.numel()} ({zero_pct:.2f}%)")
+            
+            # Health checks
+            issues = []
+            if torch.isnan(param).any():
+                issues.append("⚠️  NaN values detected")
+            if torch.isinf(param).any():
+                issues.append("⚠️  Inf values detected")
+            if zero_pct == 100:
+                issues.append("❌ ALL ZEROS")
+            if std_val == 0:
+                issues.append("⚠️  Zero std (constant values)")
+            
+            if issues:
+                for issue in issues:
+                    print(f"    {issue}")
+        print()
+
 try:
     model = InternVLChatModel.from_pretrained(model_path, torch_dtype=torch.bfloat16)
     
@@ -34,20 +81,39 @@ try:
     print(f"\nVision model type: {type(model.vision_model)}")
     print(f"Vision model has 'merge_and_unload': {hasattr(model.vision_model, 'merge_and_unload')}")
     
-    # Sample a few weights
-    print(f"\nLanguage model first layer weight sample:")
-    first_param = next(model.language_model.parameters())
-    print(f"  Shape: {first_param.shape}")
-    print(f"  Mean: {first_param.mean().item():.6f}")
-    print(f"  Std: {first_param.std().item():.6f}")
-    print(f"  Min: {first_param.min().item():.6f}")
-    print(f"  Max: {first_param.max().item():.6f}")
+    # Analyze language model weights
+    analyze_module_weights(model.language_model, "Language Model (LLM)", max_params=15)
     
-    # Check if weights are reasonable (not all zeros or NaN)
-    if torch.isnan(first_param).any():
-        print("  ❌ WARNING: NaN values detected!")
-    if (first_param == 0).all():
-        print("  ❌ WARNING: All zeros!")
+    # Analyze vision model weights
+    analyze_module_weights(model.vision_model, "Vision Model (ViT)", max_params=10)
+    
+    # Analyze MLP weights if available
+    if hasattr(model, 'mlp1'):
+        analyze_module_weights(model.mlp1, "MLP Projector", max_params=5)
+    
+    # Summary statistics
+    print(f"\n{'='*80}")
+    print("📈 Overall Model Summary")
+    print(f"{'='*80}")
+    
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total_zeros = sum((p == 0).sum().item() for p in model.parameters() if p.numel() > 0)
+    total_nans = sum(torch.isnan(p).sum().item() for p in model.parameters() if p.numel() > 0)
+    total_infs = sum(torch.isinf(p).sum().item() for p in model.parameters() if p.numel() > 0)
+    
+    print(f"Total parameters: {total_params:,}")
+    print(f"Trainable parameters: {trainable_params:,} ({100*trainable_params/total_params:.2f}%)")
+    print(f"Total zeros: {total_zeros:,} ({100*total_zeros/total_params:.2f}%)")
+    print(f"Total NaNs: {total_nans:,}")
+    print(f"Total Infs: {total_infs:,}")
+    
+    if total_nans > 0 or total_infs > 0:
+        print(f"\n❌ CRITICAL: Model contains {total_nans} NaN and {total_infs} Inf values!")
+    elif 100*total_zeros/total_params > 50:
+        print(f"\n⚠️  WARNING: Model has >50% zero values - may indicate undertrained weights")
+    else:
+        print(f"\n✓ Model weights appear healthy")
     
 except Exception as e:
     print(f"❌ Error loading model: {e}")
