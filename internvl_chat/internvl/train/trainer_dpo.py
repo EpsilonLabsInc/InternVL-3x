@@ -4,6 +4,7 @@
 # Licensed under The MIT License [see LICENSE for details]
 # --------------------------------------------------------
 
+import logging
 from copy import deepcopy
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
@@ -11,8 +12,67 @@ import deepspeed
 import torch
 from torch import nn
 from torch.utils.data import ConcatDataset
+from transformers import TrainerCallback
 from trl import DPOTrainer
 from trl.trainer.utils import RunningMoments, pad_to_length
+
+logger = logging.getLogger(__name__)
+
+# ============================================================================
+# DIAGNOSTIC CALLBACK: Monitor weights during training
+# ============================================================================
+class WeightMonitoringCallback(TrainerCallback):
+    """Callback to monitor and log weight statistics during training"""
+
+    def __init__(self, check_interval=5):
+        """
+        Args:
+            check_interval: Check weights every N steps
+        """
+        self.check_interval = check_interval
+
+    def on_step_end(self, args, state, control, **kwargs):
+        """Called after each training step"""
+        if state.global_step % self.check_interval != 0:
+            return
+
+        model = kwargs.get('model')
+        if model is None:
+            return
+
+        # Check LoRA weights for zeros
+        zero_count = 0
+        total_lora_params = 0
+
+        for name, param in model.named_parameters():
+            if 'lora' in name.lower() and param.requires_grad:
+                total_lora_params += 1
+                param_data = param.data
+
+                # Check if ALL values are zero
+                num_zeros = (param_data == 0).sum().item()
+                if num_zeros == param_data.numel():
+                    zero_count += 1
+                    logger.warning(
+                        f"🔴 [STEP {state.global_step}] LoRA param ALL ZERO: {name} "
+                        f"(shape: {param.shape}, {param_data.numel()} elements)"
+                    )
+                else:
+                    # Log stats for non-zero LoRA params
+                    mean_val = param_data.mean().item()
+                    std_val = param_data.std().item()
+                    if state.global_step <= 10 or state.global_step % 50 == 0:
+                        logger.info(
+                            f"[STEP {state.global_step}] LoRA {name}: "
+                            f"mean={mean_val:.8f}, std={std_val:.8f}, "
+                            f"zeros={num_zeros}/{param_data.numel()}"
+                        )
+
+        if zero_count > 0:
+            logger.warning(
+                f"⚠️ [STEP {state.global_step}] Found {zero_count}/{total_lora_params} "
+                f"LoRA parameters with ALL ZERO values!"
+            )
 
 
 def _map(self, *args, **kwargs):
@@ -28,6 +88,9 @@ class MultimodalDPOTrainer(DPOTrainer):
 
         if self.loss_type != 'bco_pair' and 'bco_pair' in self.loss_type:
             self.running = RunningMoments(self.accelerator)
+
+        # Add weight monitoring callback
+        self.add_callback(WeightMonitoringCallback(check_interval=5))
 
     @staticmethod
     def concatenated_inputs(
