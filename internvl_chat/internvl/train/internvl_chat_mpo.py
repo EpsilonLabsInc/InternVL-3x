@@ -69,7 +69,7 @@ try:
     from petrel_client.common.config import Config
     has_tcs_loader = True
 except ImportError as E:
-    print('petrel_client is not installed. Using PIL to load images.')
+    #print('petrel_client is not installed. Using PIL to load images.')
     has_tcs_loader = False
 
 # Set constants for image processing and logging
@@ -84,6 +84,74 @@ warnings.filterwarnings('ignore')
 logger = logging.getLogger(__name__)
 
 os.environ['TOKENIZERS_PARALLELISM'] = 'true'
+
+def check_first_weights(model, step_name=""):
+    print(f"\n✓ Checking model first weights @@@@@@@ {step_name}")
+    print(f"\nModel config:")
+    print(f"  use_llm_lora: {model.config.use_llm_lora}")
+    print(f"  use_backbone_lora: {model.config.use_backbone_lora}")
+    
+    # Check language model
+    print(f"\nLanguage model type: {type(model.language_model)}")
+    print(f"Language model has 'merge_and_unload': {hasattr(model.language_model, 'merge_and_unload')}")
+    
+    # Check vision model
+    print(f"\nVision model type: {type(model.vision_model)}")
+    print(f"Vision model has 'merge_and_unload': {hasattr(model.vision_model, 'merge_and_unload')}")
+    
+    # Sample a few weights
+    print(f"\nLanguage model first layer weight sample:")
+    first_param = next(model.language_model.parameters())
+    print(f"  Shape: {first_param.shape}")
+    print(f"  Mean: {first_param.mean().item():.6f}")
+    print(f"  Std: {first_param.std().item():.6f}")
+    print(f"  Min: {first_param.min().item():.6f}")
+    print(f"  Max: {first_param.max().item():.6f}")
+
+
+# ============================================================================
+# DIAGNOSTIC FUNCTION: Check for zero weights
+# ============================================================================
+def check_model_weight_stats(model, step_name=""):
+    """Check and log weight statistics to detect zero weights"""
+    import torch
+    stats = {}
+    zero_params = 0
+    total_params = 0
+    
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            total_params += 1
+            param_data = param.data
+            
+            # Skip empty tensors
+            if param_data.numel() == 0:
+                continue
+            
+            mean_val = param_data.mean().item()
+            std_val = param_data.std().item()
+            min_val = param_data.min().item()
+            max_val = param_data.max().item()
+            num_zeros = (param_data == 0).sum().item()
+            
+            # Check if ALL values are zero
+            if num_zeros == param_data.numel():
+                zero_params += 1
+                if 'lora' in name.lower():
+                    logger.warning(f"🔴 [ZERO WEIGHTS {step_name}] {name}: ALL ZERO (shape: {param.shape})")
+            
+            # Log LoRA weights specifically
+            if 'lora' in name.lower():
+                logger.info(f"[LORA WEIGHTS {step_name}] {name}: "
+                           f"mean={mean_val:.8f}, std={std_val:.8f}, "
+                           f"min={min_val:.8f}, max={max_val:.8f}, "
+                           f"zeros={num_zeros}/{param_data.numel()}")
+    
+    if zero_params > 0:
+        logger.warning(f"⚠️ [WARNING {step_name}] Found {zero_params} trainable parameters with ALL ZERO values!")
+    
+    logger.info(f"[SUMMARY {step_name}] Total trainable params: {total_params}, Zero params: {zero_params}")
+
 @dataclass
 class WandbArguments:
     wandb_project: str = field(
@@ -473,15 +541,15 @@ class LazySupervisedDataset(Dataset):
 
     def multi_modal_multi_image_get_item(self, data_item):
 
-        print("1, in multi_modal_multi_image_get_item")
+        #print("1, in multi_modal_multi_image_get_item")
         # Build transformation function
         transform = self.get_transform()
 
         images, num_tiles = [], []
         num_image = len(data_item['image'])
 
-        print("images are", data_item['image'])
-        
+        #print("images are", data_item['image'])
+
         for image_path in data_item['image']:
             # Merge the image path
             image_path = self.get_image_path(image_path)
@@ -511,9 +579,9 @@ class LazySupervisedDataset(Dataset):
             {'from': 'gpt', 'value': data_item['chosen']},
         ]
 
-        print("2, chosen conv")
-        print(chosen_conversations)
-        
+        # print("2, chosen conv")
+        # print(chosen_conversations)
+
         chosen_ret = preprocess_function(
             self.template_name,
             [deepcopy(chosen_conversations)],
@@ -529,9 +597,9 @@ class LazySupervisedDataset(Dataset):
             {'from': 'gpt', 'value': data_item['rejected']},
         ]
 
-        print("3, chosen conv")
-        print(rejected_conversations)
-        
+        # print("3, chosen conv")
+        # print(rejected_conversations)
+
         rejected_ret = preprocess_function(
             self.template_name,
             [deepcopy(rejected_conversations)],
@@ -760,9 +828,9 @@ def build_datasets(
     datasets = []
     lengths = []
 
-    print("123, data")
-    print(data_args.meta_path)
-    
+    # print("123, data")
+    # print(data_args.meta_path)
+
     ds_collections = json.loads(open(data_args.meta_path).read())
     for ds_idx, ds_name in enumerate(ds_collections.keys()):
         repeat_time = ds_collections[ds_name]['repeat_time']
@@ -1063,6 +1131,13 @@ def main():
     if model_args.use_llm_lora:
         model.wrap_llm_lora(r=model_args.use_llm_lora, lora_alpha=2 * model_args.use_llm_lora)
         model.config.use_llm_lora = model_args.use_llm_lora
+        # 🔍 DIAGNOSTIC: Check weights after LoRA initialization
+        if dist.get_rank() == 0:
+            logger.info("=" * 80)
+            logger.info("🔍 DIAGNOSTIC: Weights after LoRA initialization")
+            logger.info("=" * 80)
+            check_first_weights(model, step_name="AFTER_LORA_INIT111")
+            check_model_weight_stats(model, step_name="AFTER_LORA_INIT222")
 
     if model_args.freeze_mlp:
         _freeze_params(model.mlp1)
@@ -1099,8 +1174,26 @@ def main():
             checkpoint = training_args.resume_from_checkpoint
         elif last_checkpoint is not None:
             checkpoint = last_checkpoint
+
+        # 🔍 DIAGNOSTIC: Check weights BEFORE training
+        if dist.get_rank() == 0:
+            logger.info("=" * 80)
+            logger.info("🔍 DIAGNOSTIC: Weights BEFORE training starts")
+            logger.info("=" * 80)
+            check_first_weights(model, step_name="BEFORE_TRAINING111")
+            check_model_weight_stats(model, step_name="BEFORE_TRAINING222")
+
         print(f'[Memory Usage before training] {torch.cuda.memory_allocated()/1024/1024/1024:.2f}GB')
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
+
+        # 🔍 DIAGNOSTIC: Check weights AFTER training
+        if dist.get_rank() == 0:
+            logger.info("=" * 80)
+            logger.info("🔍 DIAGNOSTIC: Weights AFTER training completes")
+            logger.info("=" * 80)
+            check_first_weights(model, step_name="AFTER_TRAINING111")
+            check_model_weight_stats(model, step_name="AFTER_TRAINING222")
+
         trainer.save_model()  # Saves the tokenizer too for easy upload
 
         metrics = train_result.metrics
