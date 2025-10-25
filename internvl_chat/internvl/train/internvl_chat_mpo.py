@@ -540,7 +540,7 @@ class LazySupervisedDataset(Dataset):
         images, num_tiles = [], []
         num_image = len(data_item['image'])
 
-        print("images are", data_item['image'])
+        #print("images are", data_item['image'])
 
         for image_path in data_item['image']:
             # Merge the image path

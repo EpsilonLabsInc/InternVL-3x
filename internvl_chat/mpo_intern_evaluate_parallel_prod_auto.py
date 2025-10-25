@@ -301,12 +301,13 @@ def run_inference_for_penalty(repetition_penalty, base_description):
     test_jsonl = "/home/ruian/projects/all_data_cleaning/matt_csv_polish/data/0917_prod.jsonl"
     test_jsonl = "/home/ruian/projects/all_data_cleaning/matt_csv_polish/data/0917_prod_no_label.jsonl"
     test_jsonl = "/home/ruian/projects/all_data_cleaning/prod_csv_polish/prod_data_v2_with_label_mpo.jsonl"
+    test_jsonl = "/home/ruian/projects/all_data_cleaning/prod_csv_polish/data/mpo_test_data_1022.jsonl"
     
     # checkpoint_dir = "/mnt/pngs/internvl_weights/internvl3_chimera_20250906_075059_1e-5_consolidated_labels-0904"
     # checkpoint_dir = "/mnt/pngs/internvl_weights/internvl3_chimera_20250913_021402_1e-5_labels_spine_only-0912-8B"
     # checkpoint_dir = "/home/ruian/vlm_ckpts_v2/labels/internvl3_chimera_20250913_021402_1e-5_labels_spine_only-0912-8B"
 
-    checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_1e-5_consolidated_labels-1009-38B-8B/checkpoint-23688/"
+    #checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_1e-5_consolidated_labels-1009-38B-8B/checkpoint-23688/"
     #checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/no-label/internvl3_chimera_20251011_031636_1e-5_no_labels-1009-38B-8B"
 
     #checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251022_162206_1e-6"
@@ -314,6 +315,14 @@ def run_inference_for_penalty(repetition_penalty, base_description):
     #checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/lora_merged/1e-6"
     #checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251023_030325_1e-6"
 
+    checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251024_180329_1e-10/checkpoint-3/"
+    checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_1e-5_consolidated_labels-1009-38B-8B/checkpoint-23688/merged"
+
+    checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251024_183325_1e-10/checkpoint-3/"
+
+
+    
+    
     output_dir = f"/home/ruian/projects/InternVL-3x/internvl_chat/test_data/pkls/{description}"
 
     if not os.path.exists(output_dir):

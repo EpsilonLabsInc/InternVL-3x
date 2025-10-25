@@ -20,8 +20,7 @@ export LAUNCHER=pytorch
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-LR=1e-10
-
+LR=2e-7
 
 OUTPUT_DIR="training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_${TIMESTAMP}_${LR}"
 
@@ -38,7 +37,7 @@ torchrun \
   --nproc_per_node=${GPUS} \
   --master_port=${MASTER_PORT} \
   internvl/train/internvl_chat_mpo.py \
-  --model_name_or_path "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_1e-5_consolidated_labels-1009-38B-8B/checkpoint-23688" \
+  --model_name_or_path "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_1e-5_consolidated_labels-1009-38B-8B/checkpoint-23688/merged" \
   --conv_style "internvl2_5" \
   --output_dir ${OUTPUT_DIR} \
   --meta_path "./shell/data/mpo_1021.json" \
@@ -54,7 +53,7 @@ torchrun \
   --use_data_resampling False \
   --dataloader_num_workers 8 \
   --bf16 True \
-  --num_train_epochs 1 \
+  --num_train_epochs 3 \
   --per_device_train_batch_size ${PER_DEVICE_BATCH_SIZE} \
   --gradient_accumulation_steps ${GRADIENT_ACC} \
   --evaluation_strategy "no" \
@@ -79,6 +78,6 @@ torchrun \
   --rpo_alpha 1 \
   --use_liger True \
   --report_to "wandb" \
-  --wandb_project "internvl3_mpo_1022" \
+  --wandb_project "internvl3_mpo_1024" \
   --wandb_run_name "${this_run}" \
     2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"
