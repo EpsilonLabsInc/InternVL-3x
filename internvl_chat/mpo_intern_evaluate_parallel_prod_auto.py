@@ -23,8 +23,10 @@ import math
 
 
 import os
+
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = ""
 os.environ["GOOGLE_CLOUD_DISABLE_GRPC"] = "true"
+
 
 def init_distributed():
     dist.init_process_group(backend="nccl")
@@ -215,7 +217,6 @@ def generate_output(lines, model, tokenizer, output_path, rank, generation_confi
         ]
         entry["image"] = image_paths
         try:
-
             pixel_values_list = [
                 load_image(image_path, max_num=12).to(torch.bfloat16).cuda()
                 for image_path in image_paths
@@ -241,8 +242,8 @@ def generate_output(lines, model, tokenizer, output_path, rank, generation_confi
             print(f">>>>>>>>>Error: {e}")
             continue
 
-        #entry["prompt"] = query
-        #entry["rad_report"] = truth_report
+        # entry["prompt"] = query
+        # entry["rad_report"] = truth_report
         entry["mpo_generated_report"] = response
 
         print(">>>>>> generated report")
@@ -257,10 +258,10 @@ def generate_output(lines, model, tokenizer, output_path, rank, generation_confi
     with open(output_path, "wb") as f:
         pickle.dump(results, f)
 
-    jsonl_output_path = output_path.replace('.pkl', '.jsonl')
-    with open(jsonl_output_path, 'w') as f:
+    jsonl_output_path = output_path.replace(".pkl", ".jsonl")
+    with open(jsonl_output_path, "w") as f:
         for entry in results:
-            f.write(json.dumps(entry) + '\n')
+            f.write(json.dumps(entry) + "\n")
 
 
 def aggregate_results(world_size, description, output_dir):
@@ -277,6 +278,7 @@ def aggregate_results(world_size, description, output_dir):
         pickle.dump(aggregated_results, f)
 
     print(f"Aggregated results saved to {final_output_path}")
+
 
 def run_inference_for_penalty(repetition_penalty, base_description):
     """Run inference for a specific repetition penalty"""
@@ -298,32 +300,33 @@ def run_inference_for_penalty(repetition_penalty, base_description):
         print(f"generation_config: {generation_config}")
 
     # Set up paths
-    test_jsonl = "/home/ruian/projects/all_data_cleaning/matt_csv_polish/data/0917_prod.jsonl"
+    test_jsonl = (
+        "/home/ruian/projects/all_data_cleaning/matt_csv_polish/data/0917_prod.jsonl"
+    )
     test_jsonl = "/home/ruian/projects/all_data_cleaning/matt_csv_polish/data/0917_prod_no_label.jsonl"
     test_jsonl = "/home/ruian/projects/all_data_cleaning/prod_csv_polish/prod_data_v2_with_label_mpo.jsonl"
     test_jsonl = "/home/ruian/projects/all_data_cleaning/prod_csv_polish/data/mpo_test_data_1022.jsonl"
-    
+
     # checkpoint_dir = "/mnt/pngs/internvl_weights/internvl3_chimera_20250906_075059_1e-5_consolidated_labels-0904"
     # checkpoint_dir = "/mnt/pngs/internvl_weights/internvl3_chimera_20250913_021402_1e-5_labels_spine_only-0912-8B"
     # checkpoint_dir = "/home/ruian/vlm_ckpts_v2/labels/internvl3_chimera_20250913_021402_1e-5_labels_spine_only-0912-8B"
 
-    #checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_1e-5_consolidated_labels-1009-38B-8B/checkpoint-23688/"
-    #checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/no-label/internvl3_chimera_20251011_031636_1e-5_no_labels-1009-38B-8B"
+    # checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_1e-5_consolidated_labels-1009-38B-8B/checkpoint-23688/"
+    # checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/no-label/internvl3_chimera_20251011_031636_1e-5_no_labels-1009-38B-8B"
 
-    #checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251022_162206_1e-6"
-    #checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251022_060113"
-    #checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/lora_merged/1e-6"
-    #checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251023_030325_1e-6"
+    # checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251022_162206_1e-6"
+    # checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251022_060113"
+    # checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/lora_merged/1e-6"
+    # checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251023_030325_1e-6"
 
     checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251024_180329_1e-10/checkpoint-3/"
     checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_1e-5_consolidated_labels-1009-38B-8B/checkpoint-23688/merged"
 
     checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251024_183325_1e-10/checkpoint-3/"
 
-
-    
-    
-    output_dir = f"/home/ruian/projects/InternVL-3x/internvl_chat/test_data/pkls/{description}"
+    output_dir = (
+        f"/home/ruian/projects/InternVL-3x/internvl_chat/test_data/pkls/{description}"
+    )
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -331,9 +334,21 @@ def run_inference_for_penalty(repetition_penalty, base_description):
             print(f"Directory '{output_dir}' created.")
 
 
-    for checkpoint in [checkpoint_dir]:
+    checkpoints = sorted(
+        [
+            os.path.join(checkpoint_dir, ckpt)
+            for ckpt in os.listdir(checkpoint_dir)
+            if ckpt.startswith("checkpoint-")
+        ],
+        key=lambda x: int(x.split("-")[-1]),
+    )
 
-        suffix = "test"
+    if rank == 0:
+        print(f"Found {len(checkpoints)} checkpoints to evaluate.")
+
+    for checkpoint in checkpoints:
+
+        suffix = checkpoint.split("/")[-1]
         if rank == 0:
             print(f"Loading model from {checkpoint}, with a suffix of {suffix}")
 
