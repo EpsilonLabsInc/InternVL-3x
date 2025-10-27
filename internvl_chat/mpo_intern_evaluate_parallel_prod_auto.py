@@ -313,16 +313,7 @@ def run_inference_for_penalty(repetition_penalty, base_description):
 
     # checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_1e-5_consolidated_labels-1009-38B-8B/checkpoint-23688/"
     # checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/no-label/internvl3_chimera_20251011_031636_1e-5_no_labels-1009-38B-8B"
-
-    # checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251022_162206_1e-6"
-    # checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251022_060113"
-    # checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/lora_merged/1e-6"
-    # checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251023_030325_1e-6"
-
-    checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251024_180329_1e-10/checkpoint-3/"
-    checkpoint_dir = "/home/ruian/vlm_ckpt_v2.0/label/internvl3_chimera_20251009_004033_1e-5_consolidated_labels-1009-38B-8B/checkpoint-23688/merged"
-
-    checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251024_183325_1e-10/checkpoint-3/"
+    checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251024_192144_2e-7"
 
     output_dir = (
         f"/home/ruian/projects/InternVL-3x/internvl_chat/test_data/pkls/{description}"
@@ -349,6 +340,7 @@ def run_inference_for_penalty(repetition_penalty, base_description):
     for checkpoint in checkpoints:
 
         suffix = checkpoint.split("/")[-1]
+    
         if rank == 0:
             print(f"Loading model from {checkpoint}, with a suffix of {suffix}")
 
