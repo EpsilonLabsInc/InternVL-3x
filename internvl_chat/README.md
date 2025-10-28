@@ -1,5 +1,10 @@
 # InternVL-Chat
 
+### For epsilon training
+# for mpo
+GPUS=8 PER_DEVICE_BATCH_SIZE=1 nohup sh shell/internvl3.0/mpo/internvl3_chimera-38b-8b_mpo.sh > logs/mpo.log 2>&1
+
+
 This folder contains the implementation of the InternVL-Chat.
 
 ## 📖 Documents
