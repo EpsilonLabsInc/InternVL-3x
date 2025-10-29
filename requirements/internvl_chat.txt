@@ -24,13 +24,15 @@ torch>=2
 torchaudio==2.4.0
 torchvision>=0.15
 tqdm
-transformers==4.39.3
+transformers==4.44.0
 yacs
 wandb
 pylibjpeg==2.0.1
 pylibjpeg-libjpeg==2.2.0
 tensorflow==2.17.0
 tf-keras==2.17.0
-# pydicom==3.0.1
+pydicom==3.0.1
 # ml_dtypes==0.2.0
 datasets
+trl==0.10.1
+liger-kernel==0.6.2
