@@ -474,7 +474,8 @@ class LazySupervisedDataset(Dataset):
                 print(image_path)
 
             return dcm_2_rgb(dcm_data, image_path, augmentation_parameters=augmentation_parameters)
-        if self.r2_stream_from_r2:
+        if self.r2_client is not None and self.r2_stream_from_r2:
+            image_path = image_path.replace(self.root, '', 1) if image_path.startswith(self.root) else image_path
             return self._fetch_image_from_r2(image_path)
         else:
             return Image.open(image_path).convert('RGB')
