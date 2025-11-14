@@ -16,8 +16,10 @@ from dataclasses import dataclass, field
 from functools import partial
 from typing import Dict, Literal, Optional
 import random
+import io
 
 import numpy as np
+import boto3
 
 try:
     import orjson as json
@@ -370,6 +372,36 @@ class LazySupervisedDataset(Dataset):
         self.max_dynamic_patch = max_dynamic_patch
         self.normalize_type = normalize_type
 
+        # Initialize R2 client for Cloudflare R2 support
+        self.r2_client = None
+        self.r2_bucket_name = 'epsilonlabs-datasets'
+        self.r2_bucket_png_prefix = 'png/org-size'
+        self.r2_stream_from_r2 = True
+
+        # Get R2 credentials from environment variables
+        r2_endpoint_url = os.getenv('R2_ENDPOINT_URL')
+        r2_access_key_id = os.getenv('R2_ACCESS_KEY_ID')
+        r2_secret_access_key = os.getenv('R2_SECRET_ACCESS_KEY')
+
+        if r2_endpoint_url and r2_access_key_id and r2_secret_access_key:
+            from botocore.config import Config
+
+            config = Config(
+                max_pool_connections=50,
+                retries={'max_attempts': 3, 'mode': 'adaptive'}
+            )
+
+            self.r2_client = boto3.client(
+                's3',
+                endpoint_url=r2_endpoint_url,
+                aws_access_key_id=r2_access_key_id,
+                aws_secret_access_key=r2_secret_access_key,
+                config=config
+            )
+            logger.info(f'[Dataset] R2 client initialized for bucket: {self.r2_bucket_name}')
+        else:
+            logger.warning('[Dataset] R2 credentials not found in environment variables. R2 support will be disabled.')
+
         # If the precomputed length does not exist, roughly estimate the length of
         # each sample to improve the efficiency of group_by_length.
         if self.group_by_length:
@@ -410,6 +442,26 @@ class LazySupervisedDataset(Dataset):
             preprocess_function = preprocess
         return preprocess_function
 
+    def _fetch_image_from_r2(self, filepath):
+        """Fetch image from Cloudflare R2 bucket"""
+        # Remove leading slash if present and prepend bucket PNG prefix if specified
+        key = filepath.lstrip('/')
+        if getattr(self, 'r2_bucket_png_prefix', None):
+            key = f"{self.r2_bucket_png_prefix.rstrip('/')}/{key}"
+
+        try:
+            response = self.r2_client.get_object(Bucket=self.r2_bucket_name, Key=key)
+            body = response['Body']
+            try:
+                img_bytes = body.read()
+            finally:
+                body.close()
+            return Image.open(io.BytesIO(img_bytes)).convert('RGB')
+        except Exception as e:
+            logger.warning(f'Failed to load {key} from R2: {e}')
+            # Return a blank image as fallback
+            return Image.new('RGB', (512, 512))
+
     def load_image(self, image_path, augmentation_parameters=None):
         # Load the image using tcs_loader if available, otherwise use PIL
         if self.tcs_loader is not None and 's3://' in image_path:
@@ -422,7 +474,10 @@ class LazySupervisedDataset(Dataset):
                 print(image_path)
 
             return dcm_2_rgb(dcm_data, image_path, augmentation_parameters=augmentation_parameters)
-        return Image.open(image_path).convert('RGB')
+        if self.r2_stream_from_r2:
+            return self._fetch_image_from_r2(image_path)
+        else:
+            return Image.open(image_path).convert('RGB')
 
     def get_image_path(self, image_path):
         if image_path.startswith('s3://'):  # for ceph
