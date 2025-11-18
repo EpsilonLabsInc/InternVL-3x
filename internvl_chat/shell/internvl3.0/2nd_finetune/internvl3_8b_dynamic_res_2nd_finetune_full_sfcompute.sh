@@ -16,10 +16,9 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LR=1e-5
 MAX_DYNAMIC_PATCH=6
 
-prefix="training/"
+prefix="/mnt/training/"
 
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_epsilon_all_0608"
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_simonmed_0608"
+this_run="internvl3_chimera_${TIMESTAMP}_${LR}_sf_1117_degen_dynamicres"
 
 OUTPUT_DIR="${prefix}${this_run}"
 
@@ -55,12 +54,11 @@ torchrun \
   --vision_select_layer -1 \
   --dataloader_num_workers 4 \
   --bf16 True \
-  --num_train_epochs 1 \
+  --num_train_epochs 3 \
   --per_device_train_batch_size ${PER_DEVICE_BATCH_SIZE} \
   --gradient_accumulation_steps ${GRADIENT_ACC} \
   --evaluation_strategy "no" \
-  --save_strategy "steps" \
-  --save_steps 20 \
+  --save_strategy "epoch" \
   --save_total_limit 1 \
   --learning_rate ${LR} \
   --weight_decay 0.001 \

@@ -373,32 +373,19 @@ class LazySupervisedDataset(Dataset):
         self.normalize_type = normalize_type
 
         # Initialize R2 client for Cloudflare R2 support
-        self.r2_client = None
+        # Store credentials instead of the client to avoid pickling issues
+        self._r2_client = None
         self.r2_bucket_name = 'epsilonlabs-datasets'
         self.r2_bucket_png_prefix = 'png/org-size'
         self.r2_stream_from_r2 = True
 
         # Get R2 credentials from environment variables
-        r2_endpoint_url = os.getenv('R2_ENDPOINT_URL')
-        r2_access_key_id = os.getenv('R2_ACCESS_KEY_ID')
-        r2_secret_access_key = os.getenv('R2_SECRET_ACCESS_KEY')
+        self.r2_endpoint_url = os.getenv('R2_ENDPOINT_URL')
+        self.r2_access_key_id = os.getenv('R2_ACCESS_KEY_ID')
+        self.r2_secret_access_key = os.getenv('R2_SECRET_ACCESS_KEY')
 
-        if r2_endpoint_url and r2_access_key_id and r2_secret_access_key:
-            from botocore.config import Config
-
-            config = Config(
-                max_pool_connections=50,
-                retries={'max_attempts': 3, 'mode': 'adaptive'}
-            )
-
-            self.r2_client = boto3.client(
-                's3',
-                endpoint_url=r2_endpoint_url,
-                aws_access_key_id=r2_access_key_id,
-                aws_secret_access_key=r2_secret_access_key,
-                config=config
-            )
-            logger.info(f'[Dataset] R2 client initialized for bucket: {self.r2_bucket_name}')
+        if self.r2_endpoint_url and self.r2_access_key_id and self.r2_secret_access_key:
+            logger.info(f'[Dataset] R2 credentials found, will initialize client lazily for bucket: {self.r2_bucket_name}')
         else:
             logger.warning('[Dataset] R2 credentials not found in environment variables. R2 support will be disabled.')
 
@@ -427,6 +414,27 @@ class LazySupervisedDataset(Dataset):
 
     def __len__(self):
         return len(self.raw_data)
+
+    @property
+    def r2_client(self):
+        """Lazily initialize R2 client to avoid pickling issues with multiprocessing"""
+        if self._r2_client is None and self.r2_endpoint_url and self.r2_access_key_id and self.r2_secret_access_key:
+            from botocore.config import Config
+
+            config = Config(
+                max_pool_connections=50,
+                retries={'max_attempts': 3, 'mode': 'adaptive'}
+            )
+
+            self._r2_client = boto3.client(
+                's3',
+                endpoint_url=self.r2_endpoint_url,
+                aws_access_key_id=self.r2_access_key_id,
+                aws_secret_access_key=self.r2_secret_access_key,
+                config=config
+            )
+            logger.info(f'[Dataset Worker] R2 client initialized for bucket: {self.r2_bucket_name}')
+        return self._r2_client
 
     def get_preprocess_function(self):
         # Select the appropriate preprocessing function based on the template name
