@@ -423,7 +423,9 @@ class LazySupervisedDataset(Dataset):
 
             config = Config(
                 max_pool_connections=50,
-                retries={'max_attempts': 3, 'mode': 'adaptive'}
+                retries={'max_attempts': 5, 'mode': 'adaptive'},
+                connect_timeout=30,
+                read_timeout=60
             )
 
             self._r2_client = boto3.client(
@@ -433,7 +435,7 @@ class LazySupervisedDataset(Dataset):
                 aws_secret_access_key=self.r2_secret_access_key,
                 config=config
             )
-            logger.info(f'[Dataset Worker] R2 client initialized for bucket: {self.r2_bucket_name}')
+            logger.info(f'[Dataset Worker] R2 client initialized with endpoint: {self.r2_endpoint_url}, bucket: {self.r2_bucket_name}')
         return self._r2_client
 
     def get_preprocess_function(self):
@@ -450,25 +452,38 @@ class LazySupervisedDataset(Dataset):
             preprocess_function = preprocess
         return preprocess_function
 
-    def _fetch_image_from_r2(self, filepath):
-        """Fetch image from Cloudflare R2 bucket"""
+    def _fetch_image_from_r2(self, filepath, max_retries=3):
+        """Fetch image from Cloudflare R2 bucket with retry logic"""
         # Remove leading slash if present and prepend bucket PNG prefix if specified
         key = filepath.lstrip('/')
         if getattr(self, 'r2_bucket_png_prefix', None):
             key = f"{self.r2_bucket_png_prefix.rstrip('/')}/{key}"
 
-        try:
-            response = self.r2_client.get_object(Bucket=self.r2_bucket_name, Key=key)
-            body = response['Body']
+        last_error = None
+        for attempt in range(max_retries):
             try:
-                img_bytes = body.read()
-            finally:
-                body.close()
-            return Image.open(io.BytesIO(img_bytes)).convert('RGB')
-        except Exception as e:
-            logger.warning(f'Failed to load {key} from R2: {e}')
-            # Return a blank image as fallback
-            return Image.new('RGB', (512, 512))
+                if self.r2_client is None:
+                    raise ValueError("R2 client is not initialized")
+
+                response = self.r2_client.get_object(Bucket=self.r2_bucket_name, Key=key)
+                body = response['Body']
+                try:
+                    img_bytes = body.read()
+                finally:
+                    body.close()
+                return Image.open(io.BytesIO(img_bytes)).convert('RGB')
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    import time
+                    wait_time = (attempt + 1) * 2  # exponential backoff: 2s, 4s, 6s
+                    logger.warning(f'Attempt {attempt + 1}/{max_retries} failed for {key}: {e}. Retrying in {wait_time}s...')
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f'SKIPPING SAMPLE: Failed to load {key} from R2 after {max_retries} attempts: {last_error}')
+
+        # Raise exception to trigger the retry logic in __getitem__ which will skip this sample
+        raise FileNotFoundError(f'Failed to fetch image from R2: {key} after {max_retries} attempts. Last error: {last_error}')
 
     def load_image(self, image_path, augmentation_parameters=None):
         # Load the image using tcs_loader if available, otherwise use PIL
@@ -482,6 +497,7 @@ class LazySupervisedDataset(Dataset):
                 print(image_path)
 
             return dcm_2_rgb(dcm_data, image_path, augmentation_parameters=augmentation_parameters)
+
         if self.r2_client is not None and self.r2_stream_from_r2:
             image_path = image_path.replace(self.root, '', 1) if image_path.startswith(self.root) else image_path
             return self._fetch_image_from_r2(image_path)
