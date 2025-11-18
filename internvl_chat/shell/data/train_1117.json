@@ -4,6 +4,6 @@
       "annotation": "/root/projects/InternVL-3x/output/jsonl/all/1117_degen_png_train.jsonl",
       "data_augment": false,
       "repeat_time": 1,
-      "length": 8500
+      "length": 154284
     }
   }
