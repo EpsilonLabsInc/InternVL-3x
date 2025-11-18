@@ -1,7 +1,7 @@
 set -x
 
 GPUS=${GPUS:-8}
-BATCH_SIZE=${BATCH_SIZE:-128}
+BATCH_SIZE=${BATCH_SIZE:-32}
 PER_DEVICE_BATCH_SIZE=${PER_DEVICE_BATCH_SIZE:-4}
 GRADIENT_ACC=$((BATCH_SIZE / PER_DEVICE_BATCH_SIZE / GPUS))
 
@@ -52,7 +52,7 @@ torchrun \
   --freeze_mlp False \
   --freeze_backbone False \
   --vision_select_layer -1 \
-  --dataloader_num_workers 4 \
+  --dataloader_num_workers 8 \
   --bf16 True \
   --num_train_epochs 3 \
   --per_device_train_batch_size ${PER_DEVICE_BATCH_SIZE} \
