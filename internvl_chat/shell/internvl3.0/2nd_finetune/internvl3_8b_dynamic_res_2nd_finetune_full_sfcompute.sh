@@ -18,7 +18,7 @@ MAX_DYNAMIC_PATCH=6
 
 prefix="/mnt/training/"
 
-this_run="internvl3_chimera_${TIMESTAMP}_${LR}_sf_1117_degen_dynamicres"
+this_run="internvl3_8b_${TIMESTAMP}_${LR}_sf_1118_degen_hand_has_gen"
 
 OUTPUT_DIR="${prefix}${this_run}"
 
@@ -42,7 +42,7 @@ torchrun \
   --conv_style "internvl2_5" \
   --use_fast_tokenizer False \
   --output_dir ${OUTPUT_DIR} \
-  --meta_path "./shell/data/train_1117.json" \
+  --meta_path "./shell/data/train_degen.json" \
  --overwrite_output_dir True \
   --force_image_size 448 \
   --max_dynamic_patch 6 \
@@ -74,6 +74,6 @@ torchrun \
   --ps_version 'v2' \
   --deepspeed "zero_stage1_config.json" \
   --report_to "wandb" \
-  --wandb_project "vlm-data" \
+  --wandb_project "vlm-degen" \
   --wandb_run_name "${this_run}" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"
