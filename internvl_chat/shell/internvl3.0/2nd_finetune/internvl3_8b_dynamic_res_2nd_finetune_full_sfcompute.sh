@@ -16,7 +16,7 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LR=1e-5
 MAX_DYNAMIC_PATCH=6
 
-prefix="/mnt/training/"
+prefix="./training/"
 
 this_run="internvl3_8b_${TIMESTAMP}_${LR}_sf_1118_degen_hand_has_gen"
 
@@ -77,3 +77,18 @@ torchrun \
   --wandb_project "vlm-degen" \
   --wandb_run_name "${this_run}" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"
+
+# Upload checkpoint to R2 after training completes
+TRAINING_EXIT_CODE=$?
+if [ $TRAINING_EXIT_CODE -eq 0 ]; then
+  echo "Training completed successfully. Uploading checkpoint to R2..."
+  rclone sync "${OUTPUT_DIR}" "r2:checkpoints/vlm/training/${this_run}" \
+    --progress \
+    --transfers 8 \
+    --checkers 16 \
+    --s3-chunk-size 50M \
+    --log-file "${OUTPUT_DIR}/rclone_upload.log"
+  echo "Checkpoint uploaded to R2: r2:checkpoints/vlm/training/${this_run}"
+else
+  echo "Training failed with exit code $TRAINING_EXIT_CODE. Skipping R2 upload."
+fi
