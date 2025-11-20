@@ -82,12 +82,11 @@ torchrun \
 TRAINING_EXIT_CODE=$?
 if [ $TRAINING_EXIT_CODE -eq 0 ]; then
   echo "Training completed successfully. Uploading checkpoint to R2..."
-  rclone sync "${OUTPUT_DIR}" "r2:checkpoints/vlm/training/${this_run}" \
+  rclone copy "${OUTPUT_DIR}" "r2:checkpoints/vlm/training/${this_run}" \
     --progress \
     --transfers 8 \
     --checkers 16 \
-    --s3-chunk-size 50M \
-    --log-file "${OUTPUT_DIR}/rclone_upload.log"
+    --s3-chunk-size 50M
   echo "Checkpoint uploaded to R2: r2:checkpoints/vlm/training/${this_run}"
 else
   echo "Training failed with exit code $TRAINING_EXIT_CODE. Skipping R2 upload."

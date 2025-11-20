@@ -1,0 +1,9 @@
+{
+    "epsilon_all": {
+      "root": "",
+      "annotation": "/root/projects/InternVL-3x/internvl_chat/data/100.jsonl",
+      "data_augment": false,
+      "repeat_time": 1,
+      "length": 100
+    }
+  }

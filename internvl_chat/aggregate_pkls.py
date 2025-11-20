@@ -105,6 +105,10 @@ if __name__ == "__main__":
     base_dir = "/home/eric/projects/InternVL-3x/internvl_chat/test_data/pkls/3_chimera_both_continue_all"
     base_dir = "/home/eric/projects/InternVL-3x/internvl_chat/test_data/pkls/3_chimera_both_continue_all_chest"
 
+    base_dir = "/root/projects/InternVL-3x/internvl_chat/test_data/pkls/degen_1119_has_degen_p1.5"
+    base_dir = "/root/projects/InternVL-3x/internvl_chat/test_data/pkls/degen_1119_clean_degen_p1.5"
+
+
     for subdir in os.listdir(base_dir):
         full_path = os.path.join(base_dir, subdir)
         if os.path.isdir(full_path):  # Ensure it's a directory

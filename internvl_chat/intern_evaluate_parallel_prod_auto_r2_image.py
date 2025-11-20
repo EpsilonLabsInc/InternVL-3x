@@ -394,6 +394,7 @@ def run_inference_for_penalty(repetition_penalty, base_description):
 
     checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251022_162206_1e-6"
     checkpoint_dir = "/root/projects/InternVL-3x/internvl_chat/training/internvl3_8b_20251119_000637_1e-5_sf_1118_degen_hand_has_gen/"
+    checkpoint_dir = "/root/projects/InternVL-3x/internvl_chat/training/internvl3_8b_20251119_040241_1e-5_sf_1118_degen_hand_clean_gen"
     
     output_dir = (
         f"/root/projects/InternVL-3x/internvl_chat/test_data/pkls/{description}"
