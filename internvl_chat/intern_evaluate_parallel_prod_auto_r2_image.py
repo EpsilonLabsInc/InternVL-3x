@@ -48,7 +48,8 @@ logger = logging.getLogger(__name__)
 # R2 S3 Configuration
 _r2_client = None
 R2_BUCKET_NAME = 'epsilonlabs-datasets'
-R2_BUCKET_PNG_PREFIX = 'png/org-size'
+# R2_BUCKET_PNG_PREFIX = 'png/org-size'
+R2_BUCKET_PNG_PREFIX = 'png/prod/'
 R2_STREAM_FROM_R2 = True
 
 # Get R2 credentials from environment variables
@@ -325,7 +326,7 @@ def generate_output(lines, model, tokenizer, output_path, rank, generation_confi
 
         #entry["prompt"] = query
         #entry["rad_report"] = truth_report
-        entry["new_generated_report"] = response
+        entry["new_generated_report_local"] = response
 
         print(">>>>>> generated report")
         print(response)
@@ -384,6 +385,7 @@ def run_inference_for_penalty(repetition_penalty, base_description):
     test_jsonl = "/home/ruian/projects/all_data_cleaning/matt_csv_polish/data/0917_prod_no_label.jsonl"
     test_jsonl = "/home/ruian/projects/all_data_cleaning/prod_csv_polish/prod_data_v2_with_label_mpo.jsonl"
     test_jsonl = "/root/projects/InternVL-3x/internvl_chat/data/1118_hand_degen_png_selected_clean_words.jsonl"
+    test_jsonl = "/root/projects/InternVL-3x/internvl_chat/data/hand_data.jsonl"
     
     # checkpoint_dir = "/mnt/pngs/internvl_weights/internvl3_chimera_20250906_075059_1e-5_consolidated_labels-0904"
     # checkpoint_dir = "/mnt/pngs/internvl_weights/internvl3_chimera_20250913_021402_1e-5_labels_spine_only-0912-8B"
@@ -394,7 +396,8 @@ def run_inference_for_penalty(repetition_penalty, base_description):
 
     checkpoint_dir = "/home/ruian/projects/InternVL-3x/internvl_chat/training/internvl_chat_v3_mpo/Internvl3.0_chimera-38b-8b_mpo_20251022_162206_1e-6"
     checkpoint_dir = "/root/projects/InternVL-3x/internvl_chat/training/internvl3_8b_20251119_000637_1e-5_sf_1118_degen_hand_has_gen/"
-    checkpoint_dir = "/root/projects/InternVL-3x/internvl_chat/training/internvl3_8b_20251119_040241_1e-5_sf_1118_degen_hand_clean_gen"
+    checkpoint_dir = "/root/projects/InternVL-3x/internvl_chat/training/internvl3_8b_20251120_191945_1e-5_sf_1120_clean_hand"
+    # checkpoint_dir = "/root/projects/InternVL-3x/internvl_chat/training/internvl3_8b_20251120_191945_1e-5_sf_1120_dirty_hand"
     
     output_dir = (
         f"/root/projects/InternVL-3x/internvl_chat/test_data/pkls/{description}"
