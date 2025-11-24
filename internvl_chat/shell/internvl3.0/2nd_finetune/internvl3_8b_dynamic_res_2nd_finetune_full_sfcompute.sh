@@ -18,7 +18,7 @@ MAX_DYNAMIC_PATCH=6
 
 prefix="./training/"
 
-this_run="internvl3_8b_${TIMESTAMP}_${LR}_sf_1118_degen_hand_has_gen"
+this_run="internvl3_8b_${TIMESTAMP}_${LR}_sf_1124_hand_length_15"
 
 OUTPUT_DIR="${prefix}${this_run}"
 
@@ -74,7 +74,7 @@ torchrun \
   --ps_version 'v2' \
   --deepspeed "zero_stage1_config.json" \
   --report_to "wandb" \
-  --wandb_project "vlm-degen" \
+  --wandb_project "vlm-hand-findings-len" \
   --wandb_run_name "${this_run}" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"
 
