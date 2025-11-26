@@ -18,7 +18,7 @@ MAX_DYNAMIC_PATCH=6
 
 prefix="./training/"
 
-this_run="internvl3_8b_${TIMESTAMP}_${LR}_sf_1124_hand_length_15"
+this_run="internvl3_8b_${TIMESTAMP}_${LR}_sf_1126_hand_length_15-findings_only"
 
 OUTPUT_DIR="${prefix}${this_run}"
 
