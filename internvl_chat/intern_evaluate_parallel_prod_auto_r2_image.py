@@ -48,8 +48,8 @@ logger = logging.getLogger(__name__)
 # R2 S3 Configuration
 _r2_client = None
 R2_BUCKET_NAME = 'epsilonlabs-datasets'
-R2_BUCKET_PNG_PREFIX = 'png/org-size'
-# R2_BUCKET_PNG_PREFIX = 'png/prod/'
+# R2_BUCKET_PNG_PREFIX = 'png/org-size'
+R2_BUCKET_PNG_PREFIX = 'png/prod/'
 R2_STREAM_FROM_R2 = True
 
 # Get R2 credentials from environment variables
@@ -393,7 +393,7 @@ def run_inference_for_penalty(repetition_penalty, base_description):
     test_jsonl = "/home/ruian/projects/all_data_cleaning/prod_csv_polish/prod_data_v2_with_label_mpo.jsonl"
     test_jsonl = "/root/projects/InternVL-3x/internvl_chat/data/1118_hand_degen_png_selected_clean_words.jsonl"
     test_jsonl = "/root/projects/InternVL-3x/internvl_chat/data/hand_data.jsonl"
-    test_jsonl = "/root/projects/InternVL-3x/internvl_chat/data/length_eval_subset.jsonl"
+    # test_jsonl = "/root/projects/InternVL-3x/internvl_chat/data/length_eval_subset.jsonl"
 
     # checkpoint_dir = "/mnt/pngs/internvl_weights/internvl3_chimera_20250906_075059_1e-5_consolidated_labels-0904"
     # checkpoint_dir = "/mnt/pngs/internvl_weights/internvl3_chimera_20250913_021402_1e-5_labels_spine_only-0912-8B"
@@ -405,6 +405,7 @@ def run_inference_for_penalty(repetition_penalty, base_description):
     checkpoint_dir = "/root/projects/InternVL-3x/internvl_chat/training/internvl3_8b_20251124_231837_1e-5_sf_1124_hand_length_15"
     checkpoint_dir = "/root/projects/InternVL-3x/internvl_chat/training/internvl3_8b_20251124_234949_1e-5_sf_1124_hand_length_20"
     checkpoint_dir = "/root/projects/InternVL-3x/internvl_chat/training/internvl3_8b_20251124_235336_1e-5_sf_1124_hand_length_22"
+    checkpoint_dir = "/root/projects/InternVL-3x/internvl_chat/training/internvl3_8b_20251128_221943_1e-5_sf_1128_hand_length_15-findings_only_agent"
 
     output_dir = (
         f"/root/projects/InternVL-3x/internvl_chat/test_data/pkls/{description}"
