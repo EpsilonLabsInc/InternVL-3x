@@ -15,7 +15,7 @@ classifiers = [
 dependencies = [
     "torch>=2",
     "torchvision>=0.15",
-    "transformers==4.51.0",
+    "transformers",
     "tokenizers==0.21.4",
     "sentencepiece==0.1.99",
     "shortuuid",
